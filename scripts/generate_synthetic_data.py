@@ -16,7 +16,6 @@ fake = Faker()
 Faker.seed(SEED)
 random.seed(SEED)
 
-
 COUNTRIES = ["US", "CA", "GB", "DE", "IN", "FR", "AU", "JP"]
 CURRENCY = "USD"
 
@@ -45,21 +44,15 @@ def generate_razorshield_dataset(
     Generate a synthetic transaction dataset for RazorShield.
 
     Fraud scenarios:
-    - fraud_ring: shared devices/IPs across multiple customers
-    - account_takeover: unusual device/location + higher value transaction
-    - velocity_attack: multiple transactions from an account in a short period
-    - high_risk_transaction: suspicious combination of signals
-
-    Legitimate scenarios include normal transactions and legitimate-but-unusual
-    behaviour to prevent perfect separation between classes.
+    - fraud_ring
+    - account_takeover
+    - velocity_attack
+    - high_risk_transaction
+    - repeated_failures
     """
 
     if not 0 < fraud_ratio < 1:
         raise ValueError("fraud_ratio must be between 0 and 1")
-
-    # ------------------------------------------------------------------
-    # Configuration
-    # ------------------------------------------------------------------
 
     num_fraud = int(num_records * fraud_ratio)
     num_legitimate = num_records - num_fraud
@@ -72,11 +65,16 @@ def generate_razorshield_dataset(
     devices = [generate_id("dev") for _ in range(num_devices)]
     ips = [fake.ipv4() for _ in range(num_ips)]
 
-    # Small pool deliberately used by fraud-ring transactions.
     suspicious_devices = devices[:10]
     suspicious_ips = ips[:10]
 
-    # Each customer gets a "home" country and a primary device.
+    now = datetime.now()
+    start_time = now - timedelta(days=30)
+
+    # --------------------------------------------------------------
+    # Customer profiles
+    # --------------------------------------------------------------
+
     customer_country = {
         customer_id: random.choice(COUNTRIES)
         for customer_id in customers
@@ -92,64 +90,86 @@ def generate_razorshield_dataset(
         for customer_id in customers
     }
 
-    # Track historical activity while generating data.
-    customer_transactions = defaultdict(list)
+    # Account creation dates.
+    # Some accounts are intentionally very new.
+    customer_created_at = {}
 
-    now = datetime.now()
-    start_time = now - timedelta(days=30)
+    for customer_id in customers:
+        if random.random() < 0.10:
+            # New account: 0-7 days old
+            created_at = now - timedelta(
+                days=random.randint(0, 7),
+                hours=random.randint(0, 23),
+            )
+        else:
+            # Established account: 8-365 days old
+            created_at = now - timedelta(
+                days=random.randint(8, 365),
+                hours=random.randint(0, 23),
+            )
+
+        customer_created_at[customer_id] = created_at
+
+    # Track activity while generating transactions.
+    customer_transactions = defaultdict(list)
 
     records = []
 
-    # ------------------------------------------------------------------
-    # Helper functions
-    # ------------------------------------------------------------------
+    # --------------------------------------------------------------
+    # Helper
+    # --------------------------------------------------------------
 
     def create_base_transaction(
         customer_id: str,
         timestamp: datetime,
         scenario: str,
         is_fraud: int,
+        status: str = "success",
     ) -> dict:
-        """Create a common transaction structure."""
-
         return {
             "transaction_id": generate_id("txn"),
             "customer_id": customer_id,
             "merchant_id": f"merch_{random.randint(1, 50)}",
             "currency": CURRENCY,
-            "status": "success",
+            "status": status,
             "timestamp": timestamp.isoformat(),
+            "account_created_at": customer_created_at[
+                customer_id
+            ].isoformat(),
             "billing_country": customer_country[customer_id],
             "scenario": scenario,
             "is_fraud": is_fraud,
         }
 
-    # ------------------------------------------------------------------
+    # --------------------------------------------------------------
     # LEGITIMATE TRANSACTIONS
-    # ------------------------------------------------------------------
+    # --------------------------------------------------------------
 
     for _ in range(num_legitimate):
         customer_id = random.choice(customers)
-        timestamp = random_timestamp(start_time, now)
 
-        # Most legitimate customers use their normal device/IP.
+        # A transaction cannot happen before the account exists.
+        valid_start = max(
+            start_time,
+            customer_created_at[customer_id],
+        )
+
+        timestamp = random_timestamp(valid_start, now)
+
         if random.random() < 0.85:
             device_id = customer_primary_device[customer_id]
             ip_address = customer_primary_ip[customer_id]
         else:
-            # New device / travel happens legitimately too.
             device_id = random.choice(devices)
             ip_address = random.choice(ips)
 
         billing_country = customer_country[customer_id]
 
-        # Some legitimate customers purchase internationally.
         if random.random() < 0.08:
             shipping_country = random.choice(COUNTRIES)
         else:
             shipping_country = billing_country
 
-        # Most amounts are small, but some legitimate purchases are expensive.
         if random.random() < 0.10:
             amount = round(random.uniform(200, 1_200), 2)
             scenario = "legitimate_unusual"
@@ -157,11 +177,19 @@ def generate_razorshield_dataset(
             amount = round(random.uniform(5, 350), 2)
             scenario = "legitimate"
 
+        # Small percentage of legitimate payment failures.
+        status = (
+            "failed"
+            if random.random() < 0.03
+            else "success"
+        )
+
         transaction = create_base_transaction(
             customer_id=customer_id,
             timestamp=timestamp,
             scenario=scenario,
             is_fraud=0,
+            status=status,
         )
 
         transaction.update(
@@ -176,15 +204,16 @@ def generate_razorshield_dataset(
         records.append(transaction)
         customer_transactions[customer_id].append(timestamp)
 
-    # ------------------------------------------------------------------
+    # --------------------------------------------------------------
     # FRAUD TRANSACTIONS
-    # ------------------------------------------------------------------
+    # --------------------------------------------------------------
 
     fraud_scenarios = [
         "fraud_ring",
         "account_takeover",
         "velocity_attack",
         "high_risk_transaction",
+        "repeated_failures",
     ]
 
     for _ in range(num_fraud):
@@ -192,19 +221,16 @@ def generate_razorshield_dataset(
         customer_id = random.choice(customers)
         billing_country = customer_country[customer_id]
 
-        timestamp = random_timestamp(start_time, now)
-
-        transaction = create_base_transaction(
-            customer_id=customer_id,
-            timestamp=timestamp,
-            scenario=scenario,
-            is_fraud=1,
+        valid_start = max(
+            start_time,
+            customer_created_at[customer_id],
         )
 
-        # --------------------------------------------------------------
-        # Scenario 1: FRAUD RING
-        # Multiple accounts reuse the same suspicious devices/IPs.
-        # --------------------------------------------------------------
+        timestamp = random_timestamp(valid_start, now)
+
+        # ----------------------------------------------------------
+        # FRAUD RING
+        # ----------------------------------------------------------
 
         if scenario == "fraud_ring":
             device_id = random.choice(suspicious_devices)
@@ -212,22 +238,23 @@ def generate_razorshield_dataset(
 
             amount = round(random.uniform(30, 1_000), 2)
 
-            # Often, but not always, there is a location mismatch.
-            if random.random() < 0.65:
-                shipping_country = random.choice(
+            shipping_country = (
+                random.choice(
                     [
                         country
                         for country in COUNTRIES
                         if country != billing_country
                     ]
                 )
-            else:
-                shipping_country = billing_country
+                if random.random() < 0.65
+                else billing_country
+            )
 
-        # --------------------------------------------------------------
-        # Scenario 2: ACCOUNT TAKEOVER
-        # New device + new location + unusual transaction amount.
-        # --------------------------------------------------------------
+            status = "success"
+
+        # ----------------------------------------------------------
+        # ACCOUNT TAKEOVER
+        # ----------------------------------------------------------
 
         elif scenario == "account_takeover":
             device_id = random.choice(devices)
@@ -243,29 +270,26 @@ def generate_razorshield_dataset(
                 ]
             )
 
-            # More likely during unusual hours, but not guaranteed.
             timestamp = timestamp.replace(
                 hour=random.choice([0, 1, 2, 3, 4, 22, 23])
             )
 
-            transaction["timestamp"] = timestamp.isoformat()
+            status = "success"
 
-        # --------------------------------------------------------------
-        # Scenario 3: VELOCITY ATTACK
-        # Many transactions are concentrated in a short time window.
-        # --------------------------------------------------------------
+        # ----------------------------------------------------------
+        # VELOCITY ATTACK
+        # ----------------------------------------------------------
 
         elif scenario == "velocity_attack":
+            # Create a timestamp close to previous activity.
             if customer_transactions[customer_id]:
-                recent_base = random.choice(
+                recent_base = max(
                     customer_transactions[customer_id]
                 )
-
                 timestamp = recent_base + timedelta(
                     minutes=random.randint(1, 10)
                 )
 
-                # Keep timestamp inside our overall window.
                 timestamp = min(timestamp, now)
 
             device_id = customer_primary_device[customer_id]
@@ -273,18 +297,54 @@ def generate_razorshield_dataset(
 
             amount = round(random.uniform(20, 800), 2)
 
-            shipping_country = (
-                billing_country
-                if random.random() < 0.70
-                else random.choice(COUNTRIES)
-            )
+            shipping_country = billing_country
+            status = "success"
 
-            transaction["timestamp"] = timestamp.isoformat()
+        # ----------------------------------------------------------
+        # REPEATED FAILURES
+        # ----------------------------------------------------------
 
-        # --------------------------------------------------------------
-        # Scenario 4: HIGH-RISK TRANSACTION
-        # Combination of moderately suspicious signals.
-        # --------------------------------------------------------------
+        elif scenario == "repeated_failures":
+            device_id = random.choice(suspicious_devices)
+            ip_address = random.choice(suspicious_ips)
+
+            amount = round(random.uniform(5, 500), 2)
+            shipping_country = billing_country
+            status = "failed"
+
+            # Generate additional failed attempts in the same window.
+            burst_size = random.randint(2, 4)
+
+            for attempt in range(burst_size):
+                attempt_time = timestamp + timedelta(
+                    minutes=attempt + 1
+                )
+
+                attempt_transaction = create_base_transaction(
+                    customer_id=customer_id,
+                    timestamp=attempt_time,
+                    scenario="repeated_failures",
+                    is_fraud=1,
+                    status="failed",
+                )
+
+                attempt_transaction.update(
+                    {
+                        "amount": amount,
+                        "shipping_country": shipping_country,
+                        "device_id": device_id,
+                        "ip_address": ip_address,
+                    }
+                )
+
+                records.append(attempt_transaction)
+                customer_transactions[customer_id].append(
+                    attempt_time
+                )
+
+        # ----------------------------------------------------------
+        # HIGH-RISK TRANSACTION
+        # ----------------------------------------------------------
 
         else:
             amount = round(random.uniform(250, 2_000), 2)
@@ -313,6 +373,16 @@ def generate_razorshield_dataset(
                 else billing_country
             )
 
+            status = "success"
+
+        transaction = create_base_transaction(
+            customer_id=customer_id,
+            timestamp=timestamp,
+            scenario=scenario,
+            is_fraud=1,
+            status=status,
+        )
+
         transaction.update(
             {
                 "amount": amount,
@@ -325,13 +395,13 @@ def generate_razorshield_dataset(
         records.append(transaction)
         customer_transactions[customer_id].append(timestamp)
 
-    # ------------------------------------------------------------------
-    # Finalize dataset
-    # ------------------------------------------------------------------
+    # --------------------------------------------------------------
+    # Finalize
+    # --------------------------------------------------------------
 
     df = pd.DataFrame(records)
 
-    # Shuffle so fraud isn't grouped together.
+    # Shuffle records.
     df = (
         df.sample(frac=1, random_state=SEED)
         .reset_index(drop=True)
@@ -358,12 +428,15 @@ def main() -> None:
     print("=" * 50)
     print("RazorShield Synthetic Dataset Generated")
     print("=" * 50)
-    print(f"Total transactions: {len(df):,}")
-    print(f"Fraud transactions: {df['is_fraud'].sum():,}")
+    print(f"Total events: {len(df):,}")
+    print(f"Fraud events: {df['is_fraud'].sum():,}")
     print(f"Fraud rate: {df['is_fraud'].mean() * 100:.2f}%")
 
     print("\nScenario distribution:")
     print(df["scenario"].value_counts())
+
+    print("\nStatus distribution:")
+    print(df["status"].value_counts())
 
     print(f"\nSaved to: {output_path}")
 
