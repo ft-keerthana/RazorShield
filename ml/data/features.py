@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ml.intelligence.engine import build_risk_intelligence
 
 import pandas as pd
 
@@ -38,5 +39,4 @@ def generate_transaction_features(
             if value >= 0
             else 0
         )
-
-    return data
+    return build_risk_intelligence(data)
