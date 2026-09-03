@@ -12,7 +12,7 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
-from ml.data.split import split_train_test
+from ml.data.split import split_train_validation_test
 
 
 def main():
@@ -53,10 +53,13 @@ def main():
 
     df = pd.read_csv(data_path)
 
-    _, X_test, _, y_test = split_train_test(
+    _, _, test_df = split_train_validation_test(
         df=df,
         target_column="is_fraud",
     )
+
+    X_test = test_df.drop(columns=["is_fraud"])
+    y_test = test_df["is_fraud"]
 
     model = joblib.load(model_path)
 
@@ -70,7 +73,9 @@ def main():
     print("-" * 40)
 
     print(f"Model: {model_path}")
-    print(f"Threshold: {args.threshold:.2f}")
+    print(f"Threshold: {args.threshold:.6f}")
+    print(f"Test samples: {len(test_df)}")
+    print(f"Test frauds: {int(y_test.sum())}")
 
     print(
         f"Precision: "

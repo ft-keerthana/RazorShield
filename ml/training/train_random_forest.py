@@ -3,12 +3,11 @@ from pathlib import Path
 import joblib
 import pandas as pd
 
-from sklearn.calibration import CalibratedClassifierCV
 from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import OneHotEncoder
 
 from ml.data.split import split_train_validation_test
 
@@ -63,7 +62,7 @@ def main():
         project_root
         / "ml"
         / "models"
-        / "calibrated_behavior_aware_fraud_model.joblib"
+        / "random_forest_fraud_model.joblib"
     )
 
     df = pd.read_csv(data_path)
@@ -96,7 +95,7 @@ def main():
     X_test = test_df[FEATURE_COLUMNS]
     y_test = test_df[target_column]
 
-    print("Training calibrated behavior-aware model")
+    print("Training Random Forest fraud model")
     print("----------------------------------------")
     print(f"Training samples:   {len(X_train)}")
     print(f"Validation samples: {len(X_validation)}")
@@ -130,11 +129,7 @@ def main():
             (
                 "imputer",
                 SimpleImputer(strategy="median"),
-            ),
-            (
-                "scaler",
-                StandardScaler(),
-            ),
+            )
         ]
     )
 
@@ -169,16 +164,14 @@ def main():
         ]
     )
 
-    base_model = LogisticRegression(
-        class_weight="balanced",
-        max_iter=1000,
+    classifier = RandomForestClassifier(
+        n_estimators=300,
+        max_depth=12,
+        min_samples_leaf=3,
+        max_features="sqrt",
+        class_weight="balanced_subsample",
         random_state=RANDOM_STATE,
-    )
-
-    calibrated_model = CalibratedClassifierCV(
-        estimator=base_model,
-        method="sigmoid",
-        cv=3,
+        n_jobs=-1,
     )
 
     model = Pipeline(
@@ -189,7 +182,7 @@ def main():
             ),
             (
                 "classifier",
-                calibrated_model,
+                classifier,
             ),
         ]
     )
