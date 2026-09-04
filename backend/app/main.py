@@ -2,10 +2,11 @@ from pathlib import Path
 
 import joblib
 import pandas as pd
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+
 from backend.app.policy.engine import make_decision
-from fastapi import HTTPException
+from backend.app.policy.cost_optimizer import optimize_decision
 from backend.app.network.fraud_spike import detect_fraud_spike
 
 
@@ -125,9 +126,15 @@ def model_status():
         "model_name": "calibrated_behavior_aware_fraud_model",
     }
 
+
 @app.get("/network/fraud-spike", tags=["Network Intelligence"])
 def fraud_spike_status():
-    dataset_path = PROJECT_ROOT / "data" / "processed" / "transactions_processed.csv"
+    dataset_path = (
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "transactions_processed.csv"
+    )
 
     if not dataset_path.exists():
         raise HTTPException(
@@ -144,7 +151,8 @@ def fraud_spike_status():
         "recent_fraud_rate": result.recent_fraud_rate,
         "baseline_fraud_rate": result.baseline_fraud_rate,
         "spike_ratio": result.spike_ratio,
-        "severity": result.severity,}
+        "severity": result.severity,
+    }
 
 
 @app.post("/transactions/score", tags=["Transactions"])
@@ -171,18 +179,36 @@ def score_transaction(transaction: TransactionScoreRequest):
         model.predict_proba(features)[0][1]
     )
 
+    # Existing ML + rule-based policy decision
     decision = make_decision(
-    fraud_probability=fraud_probability,
-    rule_risk_score=transaction.rule_risk_score,
-    rule_risk_flag=transaction.rule_risk_flag,
-    rule_signal_count=transaction.rule_signal_count,)
+        fraud_probability=fraud_probability,
+        rule_risk_score=transaction.rule_risk_score,
+        rule_risk_flag=transaction.rule_risk_flag,
+        rule_signal_count=transaction.rule_signal_count,
+    )
+
+    # Business-aware cost optimization
+    business_decision = optimize_decision(
+        fraud_probability=fraud_probability,
+        transaction_amount=transaction.amount,
+    )
 
     return {
-    "transaction_id": transaction_id,
-    "fraud_probability": round(fraud_probability, 6),
-    "risk_score": decision.risk_score,
-    "decision": decision.decision,
-    "reasons": decision.reasons,
-    "threshold": 0.050956,
-    "model": "calibrated_behavior_aware_fraud_model",
+        "transaction_id": transaction_id,
+        "fraud_probability": round(fraud_probability, 6),
+
+        # Existing risk policy
+        "risk_score": decision.risk_score,
+        "decision": decision.decision,
+        "reasons": decision.reasons,
+
+        # Business-aware recommendation
+        "business_decision": business_decision.decision,
+        "expected_cost": business_decision.expected_cost,
+        "allow_cost": business_decision.allow_cost,
+        "review_cost": business_decision.review_cost,
+        "hold_cost": business_decision.hold_cost,
+
+        "threshold": 0.050956,
+        "model": "calibrated_behavior_aware_fraud_model",
     }
