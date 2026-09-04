@@ -4,7 +4,7 @@ import joblib
 import pandas as pd
 from fastapi import FastAPI
 from pydantic import BaseModel
-
+from backend.app.policy.engine import make_decision
 
 app = FastAPI(
     title="RazorShield API",
@@ -147,10 +147,18 @@ def score_transaction(transaction: TransactionScoreRequest):
         model.predict_proba(features)[0][1]
     )
 
+    decision = make_decision(
+    fraud_probability=fraud_probability,
+    rule_risk_score=transaction.rule_risk_score,
+    rule_risk_flag=transaction.rule_risk_flag,
+    rule_signal_count=transaction.rule_signal_count,)
+
     return {
-        "transaction_id": transaction_id,
-        "fraud_probability": round(fraud_probability, 6),
-        "fraud_prediction": int(fraud_probability >= 0.050956),
-        "threshold": 0.050956,
-        "model": "calibrated_behavior_aware_fraud_model",
+    "transaction_id": transaction_id,
+    "fraud_probability": round(fraud_probability, 6),
+    "risk_score": decision.risk_score,
+    "decision": decision.decision,
+    "reasons": decision.reasons,
+    "threshold": 0.050956,
+    "model": "calibrated_behavior_aware_fraud_model",
     }
