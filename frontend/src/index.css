@@ -1476,3 +1476,75 @@ td {
     text-align: left;
   }
 }
+.ml-decision-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  background: #F8FAFC;
+}
+
+.ml-metric,
+.ml-decision {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ml-metric span,
+.ml-decision span {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #6B7280;
+}
+
+.ml-metric strong {
+  font-size: 22px;
+  color: #111827;
+}
+
+.ml-decision {
+  grid-column: 1 / -1;
+  padding-top: 12px;
+  border-top: 1px solid #E5E7EB;
+}
+
+.policy-decision {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.policy-decision.allow {
+  color: #166534;
+  background: #DCFCE7;
+}
+
+.policy-decision.review {
+  color: #92400E;
+  background: #FEF3C7;
+}
+
+.policy-decision.hold {
+  color: #991B1B;
+  background: #FEE2E2;
+}
+
+@media (max-width: 600px) {
+  .ml-decision-card {
+    grid-template-columns: 1fr;
+  }
+
+  .ml-decision {
+    grid-column: auto;
+  }
+}

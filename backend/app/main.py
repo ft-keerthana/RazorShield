@@ -243,6 +243,83 @@ def recent_transactions(limit: int = 8):
         }
         for _, row in recent.iterrows()
     ]
+@app.post(
+    "/transactions/{transaction_id}/score",
+    tags=["Transactions"],
+)
+def score_transaction_by_id(transaction_id: str):
+    if model is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Fraud model is not available.",
+        )
+
+    dataset_path = (
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "transactions_processed.csv"
+    )
+
+    if not dataset_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Processed transaction dataset is not available.",
+        )
+
+    transactions = pd.read_csv(dataset_path)
+
+    matches = transactions[
+        transactions["transaction_id"] == transaction_id
+    ]
+
+    if matches.empty:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Transaction '{transaction_id}' was not found.",
+        )
+
+    transaction = matches.iloc[0]
+
+    features = pd.DataFrame(
+        [
+            {
+                feature: transaction[feature]
+                for feature in MODEL_FEATURES
+            }
+        ]
+    )
+
+    fraud_probability = float(
+        model.predict_proba(features)[0][1]
+    )
+
+    decision = make_decision(
+        fraud_probability=fraud_probability,
+        rule_risk_score=float(transaction["rule_risk_score"]),
+        rule_risk_flag=int(transaction["rule_risk_flag"]),
+        rule_signal_count=int(transaction["rule_signal_count"]),
+    )
+
+    business_decision = optimize_decision(
+        fraud_probability=fraud_probability,
+        transaction_amount=float(transaction["amount"]),
+    )
+
+    return {
+        "transaction_id": transaction_id,
+        "fraud_probability": round(fraud_probability, 6),
+        "risk_score": decision.risk_score,
+        "decision": decision.decision,
+        "reasons": decision.reasons,
+        "business_decision": business_decision.decision,
+        "expected_cost": business_decision.expected_cost,
+        "allow_cost": business_decision.allow_cost,
+        "review_cost": business_decision.review_cost,
+        "hold_cost": business_decision.hold_cost,
+        "threshold": 0.050956,
+        "model": "calibrated_behavior_aware_fraud_model",
+    }
 @app.get(
     "/transactions/{transaction_id}",
     tags=["Transactions"],

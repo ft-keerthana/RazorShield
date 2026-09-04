@@ -17,7 +17,6 @@ import {
   Users,
   X,
   Clock3,
-  MapPin,
   Smartphone,
   Globe,
   AlertCircle,
@@ -39,6 +38,7 @@ import {
   getDashboardSummary,
   getRecentTransactions,
   getTransactionInvestigation,
+  scoreTransaction,
 } from "./services/api";
 
 
@@ -72,7 +72,9 @@ function Sidebar() {
 
         <div>
           <div className="brand-name">RAZORSENTRY</div>
-          <div className="brand-subtitle">Risk Intelligence</div>
+          <div className="brand-subtitle">
+            Risk Intelligence
+          </div>
         </div>
       </div>
 
@@ -94,7 +96,9 @@ function Sidebar() {
           <span>Investigation</span>
         </a>
 
-        <div className="nav-section-title">INTELLIGENCE</div>
+        <div className="nav-section-title">
+          INTELLIGENCE
+        </div>
 
         <a className="nav-item">
           <Network size={19} />
@@ -117,7 +121,9 @@ function Sidebar() {
           <span>Reports</span>
         </a>
 
-        <div className="nav-section-title">SYSTEM</div>
+        <div className="nav-section-title">
+          SYSTEM
+        </div>
 
         <a className="nav-item">
           <Settings size={19} />
@@ -126,7 +132,9 @@ function Sidebar() {
       </nav>
 
       <div className="system-status">
-        <div className="status-heading">SYSTEM STATUS</div>
+        <div className="status-heading">
+          SYSTEM STATUS
+        </div>
 
         <div className="status-row">
           <span className="status-dot" />
@@ -147,7 +155,9 @@ function Header() {
     <header className="header">
       <div>
         <h1>Dashboard</h1>
-        <p>Real-time payment risk intelligence overview</p>
+        <p>
+          Real-time payment risk intelligence overview
+        </p>
       </div>
 
       <div className="header-actions">
@@ -196,10 +206,17 @@ function StatCard({
       </div>
 
       <div className="stat-content">
-        <span className="stat-title">{title}</span>
-        <strong className="stat-value">{value}</strong>
+        <span className="stat-title">
+          {title}
+        </span>
 
-        <span className={`stat-description ${variant}`}>
+        <strong className="stat-value">
+          {value}
+        </strong>
+
+        <span
+          className={`stat-description ${variant}`}
+        >
           {description}
         </span>
       </div>
@@ -213,7 +230,8 @@ function StatCard({
 // ---------------------------------------------------------
 
 function NetworkIntelligence({ dashboardData }) {
-  const networkRisk = dashboardData.network_risk_score;
+  const networkRisk =
+    dashboardData.network_risk_score;
 
   const networkRiskLabel =
     networkRisk >= 0.7
@@ -230,7 +248,9 @@ function NetworkIntelligence({ dashboardData }) {
           <p>Current network-level risk signals</p>
         </div>
 
-        <button className="more-button">...</button>
+        <button className="more-button">
+          ...
+        </button>
       </div>
 
       <div className="network-list">
@@ -266,7 +286,9 @@ function NetworkIntelligence({ dashboardData }) {
 
           <div className="network-label">
             <strong>Abuse Network</strong>
-            <span>Candidate network detection</span>
+            <span>
+              Candidate network detection
+            </span>
           </div>
 
           <span
@@ -330,9 +352,14 @@ function NetworkIntelligence({ dashboardData }) {
 // ---------------------------------------------------------
 
 function RiskDistribution({ dashboardData }) {
-  const total = dashboardData.total_transactions;
-  const fraud = dashboardData.fraud_transactions;
-  const legitimate = dashboardData.legitimate_transactions;
+  const total =
+    dashboardData.total_transactions;
+
+  const fraud =
+    dashboardData.fraud_transactions;
+
+  const legitimate =
+    dashboardData.legitimate_transactions;
 
   const fraudPercentage = total
     ? ((fraud / total) * 100).toFixed(1)
@@ -347,7 +374,9 @@ function RiskDistribution({ dashboardData }) {
       <div className="card-header">
         <div>
           <h2>Transaction Outcome</h2>
-          <p>Ground-truth dataset distribution</p>
+          <p>
+            Ground-truth dataset distribution
+          </p>
         </div>
       </div>
 
@@ -355,7 +384,10 @@ function RiskDistribution({ dashboardData }) {
 
         <div className="donut">
           <div className="donut-center">
-            <strong>{total.toLocaleString()}</strong>
+            <strong>
+              {total.toLocaleString()}
+            </strong>
+
             <span>Total</span>
           </div>
         </div>
@@ -367,6 +399,7 @@ function RiskDistribution({ dashboardData }) {
 
             <div>
               <strong>Legitimate</strong>
+
               <span>
                 {legitimate.toLocaleString()} ·{" "}
                 {legitimatePercentage}%
@@ -380,6 +413,7 @@ function RiskDistribution({ dashboardData }) {
 
             <div>
               <strong>Fraud</strong>
+
               <span>
                 {fraud.toLocaleString()} ·{" "}
                 {fraudPercentage}%
@@ -403,6 +437,9 @@ function InvestigationPanel({
   loading,
   error,
   onClose,
+  mlScore,
+  mlLoading,
+  mlError,
 }) {
   if (!transaction && !loading && !error) {
     return null;
@@ -419,7 +456,8 @@ function InvestigationPanel({
             </span>
 
             <h2>
-              {transaction?.transaction_id || "Loading..."}
+              {transaction?.transaction_id ||
+                "Loading..."}
             </h2>
           </div>
 
@@ -433,6 +471,8 @@ function InvestigationPanel({
         </div>
 
 
+        {/* Investigation loading */}
+
         {loading && (
           <div className="investigation-loading">
             <div className="investigation-spinner" />
@@ -441,11 +481,17 @@ function InvestigationPanel({
         )}
 
 
+        {/* Investigation error */}
+
         {error && !loading && (
           <div className="investigation-error">
             <AlertCircle size={20} />
+
             <div>
-              <strong>Investigation unavailable</strong>
+              <strong>
+                Investigation unavailable
+              </strong>
+
               <span>{error}</span>
             </div>
           </div>
@@ -455,7 +501,9 @@ function InvestigationPanel({
         {transaction && !loading && !error && (
           <div className="investigation-content">
 
-            {/* Risk summary */}
+            {/* -------------------------------------------------
+                Risk summary
+            ------------------------------------------------- */}
 
             <div className="investigation-risk-card">
               <div>
@@ -480,6 +528,7 @@ function InvestigationPanel({
 
               <div className="investigation-ground-truth">
                 <span>SCENARIO</span>
+
                 <strong>
                   {transaction.scenario
                     ?.replaceAll("_", " ")
@@ -489,7 +538,90 @@ function InvestigationPanel({
             </div>
 
 
-            {/* Transaction details */}
+            {/* -------------------------------------------------
+                Live ML Decision — Commit 25
+            ------------------------------------------------- */}
+
+            <div className="investigation-section">
+              <div className="investigation-section-title">
+                <ShieldCheck size={16} />
+                Live ML Decision
+              </div>
+
+              {mlLoading && (
+                <div className="investigation-loading">
+                  <div className="investigation-spinner" />
+                  Running fraud model...
+                </div>
+              )}
+
+              {mlError && !mlLoading && (
+                <div className="investigation-error">
+                  <AlertCircle size={20} />
+
+                  <div>
+                    <strong>
+                      ML scoring unavailable
+                    </strong>
+
+                    <span>{mlError}</span>
+                  </div>
+                </div>
+              )}
+
+              {mlScore &&
+                !mlLoading &&
+                !mlError && (
+                  <div className="ml-decision-card">
+
+                    <div className="ml-metric">
+                      <span>
+                        ML FRAUD PROBABILITY
+                      </span>
+
+                      <strong>
+                        {(
+                          mlScore.fraud_probability *
+                          100
+                        ).toFixed(1)}
+                        %
+                      </strong>
+                    </div>
+
+
+                    <div className="ml-metric">
+                      <span>
+                        COMBINED RISK SCORE
+                      </span>
+
+                      <strong>
+                        {Number(
+                          mlScore.risk_score
+                        ).toFixed(3)}
+                      </strong>
+                    </div>
+
+
+                    <div className="ml-decision">
+                      <span>
+                        POLICY DECISION
+                      </span>
+
+                      <strong
+                        className={`policy-decision ${mlScore.decision.toLowerCase()}`}
+                      >
+                        {mlScore.decision}
+                      </strong>
+                    </div>
+
+                  </div>
+                )}
+            </div>
+
+
+            {/* -------------------------------------------------
+                Transaction details
+            ------------------------------------------------- */}
 
             <div className="investigation-section">
               <div className="investigation-section-title">
@@ -501,35 +633,46 @@ function InvestigationPanel({
 
                 <div className="investigation-detail">
                   <span>Amount</span>
+
                   <strong>
                     {transaction.currency}{" "}
-                    {Number(transaction.amount).toFixed(2)}
+                    {Number(
+                      transaction.amount
+                    ).toFixed(2)}
                   </strong>
                 </div>
 
+
                 <div className="investigation-detail">
                   <span>Status</span>
+
                   <strong className="capitalize">
                     {transaction.status}
                   </strong>
                 </div>
 
+
                 <div className="investigation-detail">
                   <span>Customer</span>
+
                   <strong>
                     {transaction.customer_id}
                   </strong>
                 </div>
 
+
                 <div className="investigation-detail">
                   <span>Merchant</span>
+
                   <strong>
                     {transaction.merchant_id}
                   </strong>
                 </div>
 
+
                 <div className="investigation-detail">
                   <span>Timestamp</span>
+
                   <strong>
                     {new Date(
                       transaction.timestamp
@@ -537,8 +680,10 @@ function InvestigationPanel({
                   </strong>
                 </div>
 
+
                 <div className="investigation-detail">
                   <span>Scenario</span>
+
                   <strong className="capitalize">
                     {transaction.scenario?.replaceAll(
                       "_",
@@ -551,7 +696,9 @@ function InvestigationPanel({
             </div>
 
 
-            {/* Risk reasons */}
+            {/* -------------------------------------------------
+                Risk reasons
+            ------------------------------------------------- */}
 
             <div className="investigation-section">
               <div className="investigation-section-title">
@@ -559,8 +706,10 @@ function InvestigationPanel({
                 Risk Signals
               </div>
 
-              {transaction.risk_reasons?.length > 0 ? (
+              {transaction.risk_reasons?.length >
+              0 ? (
                 <div className="risk-reason-list">
+
                   {transaction.risk_reasons.map(
                     (reason, index) => (
                       <div
@@ -568,20 +717,27 @@ function InvestigationPanel({
                         key={`${reason}-${index}`}
                       >
                         <span className="risk-reason-dot" />
-                        <span>{reason}</span>
+
+                        <span>
+                          {reason}
+                        </span>
                       </div>
                     )
                   )}
+
                 </div>
               ) : (
                 <div className="no-risk-signals">
-                  No rule-based risk signals detected.
+                  No rule-based risk signals
+                  detected.
                 </div>
               )}
             </div>
 
 
-            {/* Behavioral signals */}
+            {/* -------------------------------------------------
+                Behavioral signals
+            ------------------------------------------------- */}
 
             <div className="investigation-section">
               <div className="investigation-section-title">
@@ -593,47 +749,74 @@ function InvestigationPanel({
 
                 <div className="signal-card">
                   <Clock3 size={15} />
-                  <span>Customer velocity · 5m</span>
+
+                  <span>
+                    Customer velocity · 5m
+                  </span>
+
                   <strong>
                     {transaction.customer_velocity_5m}
                   </strong>
                 </div>
 
+
                 <div className="signal-card">
                   <Clock3 size={15} />
-                  <span>Customer velocity · 1h</span>
+
+                  <span>
+                    Customer velocity · 1h
+                  </span>
+
                   <strong>
                     {transaction.customer_velocity_1h}
                   </strong>
                 </div>
 
+
                 <div className="signal-card">
                   <Smartphone size={15} />
-                  <span>Device velocity · 5m</span>
+
+                  <span>
+                    Device velocity · 5m
+                  </span>
+
                   <strong>
                     {transaction.device_velocity_5m}
                   </strong>
                 </div>
 
+
                 <div className="signal-card">
                   <Globe size={15} />
-                  <span>IP velocity · 5m</span>
+
+                  <span>
+                    IP velocity · 5m
+                  </span>
+
                   <strong>
                     {transaction.ip_velocity_5m}
                   </strong>
                 </div>
 
+
                 <div className="signal-card">
                   <AlertTriangle size={15} />
-                  <span>Failed attempts · 1h</span>
+
+                  <span>
+                    Failed attempts · 1h
+                  </span>
+
                   <strong>
                     {transaction.failed_attempts_1h}
                   </strong>
                 </div>
 
+
                 <div className="signal-card">
                   <Users size={15} />
+
                   <span>Shared device</span>
+
                   <strong>
                     {transaction.shared_device_flag
                       ? "Yes"
@@ -641,9 +824,12 @@ function InvestigationPanel({
                   </strong>
                 </div>
 
+
                 <div className="signal-card">
                   <Network size={15} />
+
                   <span>Shared IP</span>
+
                   <strong>
                     {transaction.shared_ip_flag
                       ? "Yes"
@@ -655,7 +841,9 @@ function InvestigationPanel({
             </div>
 
 
-            {/* Investigation note */}
+            {/* -------------------------------------------------
+                Investigation note
+            ------------------------------------------------- */}
 
             <div className="investigation-note">
               <ShieldCheck size={17} />
@@ -666,11 +854,10 @@ function InvestigationPanel({
                 </strong>
 
                 <span>
-                  Signals shown here are derived from
-                  RazorSentry's rule and behavioral
-                  analysis pipeline. ML scoring and
-                  policy decisions will be displayed
-                  in the next stage.
+                  RazorSentry combines behavioral
+                  signals, calibrated ML scoring,
+                  and policy logic to produce an
+                  actionable transaction decision.
                 </span>
               </div>
             </div>
@@ -697,7 +884,11 @@ function RecentTransactions({
       <div className="card-header">
         <div>
           <h2>Recent Transactions</h2>
-          <p>Latest transactions evaluated by RazorSentry</p>
+
+          <p>
+            Latest transactions evaluated by
+            RazorSentry
+          </p>
         </div>
 
         <button className="secondary-button">
@@ -721,14 +912,18 @@ function RecentTransactions({
           <tbody>
             {transactions.length === 0 ? (
               <tr>
-                <td colSpan="6" className="time">
+                <td
+                  colSpan="6"
+                  className="time"
+                >
                   No recent transactions available.
                 </td>
               </tr>
             ) : (
               transactions.map((transaction) => {
                 const risk =
-                  transaction.risk_level || "low";
+                  transaction.risk_level ||
+                  "low";
 
                 const score =
                   transaction.risk_score ?? 0;
@@ -761,14 +956,17 @@ function RecentTransactions({
                     </td>
 
                     <td className="customer">
-                      {transaction.customer_id || "—"}
+                      {transaction.customer_id ||
+                        "—"}
                     </td>
 
                     <td>
                       <span
                         className={`score ${risk}`}
                       >
-                        {Number(score).toFixed(2)}
+                        {Number(
+                          score
+                        ).toFixed(2)}
                       </span>
                     </td>
 
@@ -820,6 +1018,15 @@ function Dashboard() {
   const [investigationError, setInvestigationError] =
     useState("");
 
+  // Commit 25 — ML scoring state
+  const [mlScore, setMlScore] =
+    useState(null);
+
+  const [mlLoading, setMlLoading] =
+    useState(false);
+
+  const [mlError, setMlError] =
+    useState("");
 
   const [loading, setLoading] =
     useState(true);
@@ -827,6 +1034,10 @@ function Dashboard() {
   const [error, setError] =
     useState("");
 
+
+  // -------------------------------------------------------
+  // Load dashboard
+  // -------------------------------------------------------
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -839,14 +1050,19 @@ function Dashboard() {
           getRecentTransactions(),
         ]);
 
-        setDashboardData(dashboardSummary);
+        setDashboardData(
+          dashboardSummary
+        );
 
         setRecentTransactions(
-          transactions.map((transaction) => ({
-            ...transaction,
-            customer_id:
-              transaction.customer_id || null,
-          }))
+          transactions.map(
+            (transaction) => ({
+              ...transaction,
+              customer_id:
+                transaction.customer_id ||
+                null,
+            })
+          )
         );
 
       } catch (err) {
@@ -867,44 +1083,88 @@ function Dashboard() {
   }, []);
 
 
+  // -------------------------------------------------------
+  // Commit 25 — Select transaction + ML scoring
+  // -------------------------------------------------------
+
   const handleSelectTransaction = async (
     transactionId
   ) => {
     setSelectedTransaction(null);
+
     setInvestigationError("");
+
     setInvestigationLoading(true);
 
-    try {
-      const investigation =
-        await getTransactionInvestigation(
-          transactionId
-        );
+    setMlScore(null);
 
-      setSelectedTransaction(investigation);
+    setMlError("");
+
+    setMlLoading(true);
+
+    try {
+      const [
+        investigation,
+        score,
+      ] = await Promise.all([
+        getTransactionInvestigation(
+          transactionId
+        ),
+        scoreTransaction(
+          transactionId
+        ),
+      ]);
+
+      setSelectedTransaction(
+        investigation
+      );
+
+      setMlScore(score);
 
     } catch (err) {
       console.error(
-        "Failed to load investigation:",
+        "Failed to load transaction intelligence:",
         err
       );
 
-      setInvestigationError(
+      const message =
         err.response?.data?.detail ||
-        "Unable to load transaction investigation."
-      );
+        "Unable to load transaction intelligence.";
+
+      setInvestigationError(message);
+
+      setMlError(message);
 
     } finally {
       setInvestigationLoading(false);
+
+      setMlLoading(false);
     }
   };
 
 
+  // -------------------------------------------------------
+  // Close investigation
+  // -------------------------------------------------------
+
   const closeInvestigation = () => {
     setSelectedTransaction(null);
+
     setInvestigationError("");
+
     setInvestigationLoading(false);
+
+    setMlScore(null);
+
+    setMlError("");
+
+    setMlLoading(false);
   };
 
+
+  // -------------------------------------------------------
+  // Loading state
+  // -------------------------------------------------------
 
   if (loading) {
     return (
@@ -915,14 +1175,23 @@ function Dashboard() {
   }
 
 
+  // -------------------------------------------------------
+  // Error state
+  // -------------------------------------------------------
+
   if (error || !dashboardData) {
     return (
       <div className="loading-screen">
-        {error || "Dashboard data unavailable."}
+        {error ||
+          "Dashboard data unavailable."}
       </div>
     );
   }
 
+
+  // -------------------------------------------------------
+  // Dashboard UI
+  // -------------------------------------------------------
 
   return (
     <div className="app-shell">
@@ -935,10 +1204,16 @@ function Dashboard() {
 
         <div className="dashboard-content">
 
+          {/* -------------------------------------------------
+              Stats
+          ------------------------------------------------- */}
+
           <div className="stat-grid">
 
             <StatCard
-              icon={<CreditCard size={21} />}
+              icon={
+                <CreditCard size={21} />
+              }
               title="Total Transactions"
               value={dashboardData.total_transactions.toLocaleString()}
               description="Dataset transactions"
@@ -946,7 +1221,9 @@ function Dashboard() {
             />
 
             <StatCard
-              icon={<Activity size={21} />}
+              icon={
+                <Activity size={21} />
+              }
               title="Fraud Rate"
               value={`${(
                 dashboardData.fraud_rate * 100
@@ -956,15 +1233,20 @@ function Dashboard() {
             />
 
             <StatCard
-              icon={<Network size={21} />}
+              icon={
+                <Network size={21} />
+              }
               title="Network Risk Score"
               value={`${Math.round(
-                dashboardData.network_risk_score * 100
+                dashboardData.network_risk_score *
+                  100
               )} / 100`}
               description={
-                dashboardData.network_risk_score >= 0.7
+                dashboardData.network_risk_score >=
+                0.7
                   ? "High network risk"
-                  : dashboardData.network_risk_score >= 0.4
+                  : dashboardData.network_risk_score >=
+                      0.4
                     ? "Medium network risk"
                     : "Low network risk"
               }
@@ -972,17 +1254,24 @@ function Dashboard() {
             />
 
             <StatCard
-              icon={<BarChart3 size={21} />}
+              icon={
+                <BarChart3 size={21} />
+              }
               title="Transaction Volume"
               value={`$${(
-                dashboardData.total_amount / 1_000_000
+                dashboardData.total_amount /
+                1_000_000
               ).toFixed(2)}M`}
-              description={`Average $${dashboardData.average_transaction_amount.toFixed(2)}`}
+              description={`Average $${dashboardData.average_transaction_amount.toFixed(
+                2
+              )}`}
               variant="green"
             />
 
             <StatCard
-              icon={<AlertTriangle size={21} />}
+              icon={
+                <AlertTriangle size={21} />
+              }
               title="Fraud Transactions"
               value={dashboardData.fraud_transactions.toLocaleString()}
               description={`${(
@@ -994,7 +1283,13 @@ function Dashboard() {
           </div>
 
 
+          {/* -------------------------------------------------
+              Dashboard grid
+          ------------------------------------------------- */}
+
           <div className="dashboard-grid">
+
+            {/* Fraud trend */}
 
             <section className="card chart-card">
 
@@ -1003,8 +1298,8 @@ function Dashboard() {
                   <h2>Fraud Rate Trend</h2>
 
                   <p>
-                    Recent fraud activity across the
-                    monitoring window
+                    Recent fraud activity across
+                    the monitoring window
                   </p>
                 </div>
 
@@ -1020,8 +1315,9 @@ function Dashboard() {
                   width="100%"
                   height="100%"
                 >
-
-                  <AreaChart data={fraudTrend}>
+                  <AreaChart
+                    data={fraudTrend}
+                  >
 
                     <defs>
                       <linearGradient
@@ -1090,7 +1386,6 @@ function Dashboard() {
                     />
 
                   </AreaChart>
-
                 </ResponsiveContainer>
 
               </div>
@@ -1104,7 +1399,9 @@ function Dashboard() {
 
 
             <RecentTransactions
-              transactions={recentTransactions}
+              transactions={
+                recentTransactions
+              }
               onSelectTransaction={
                 handleSelectTransaction
               }
@@ -1118,6 +1415,10 @@ function Dashboard() {
           </div>
 
 
+          {/* -------------------------------------------------
+              Risk Insights
+          ------------------------------------------------- */}
+
           <section className="insights-card">
 
             <div className="insight-heading">
@@ -1127,10 +1428,13 @@ function Dashboard() {
               </div>
 
               <div>
-                <h2>Risk Insights & Alerts</h2>
+                <h2>
+                  Risk Insights & Alerts
+                </h2>
 
                 <p>
-                  Operational signals requiring attention
+                  Operational signals requiring
+                  attention
                 </p>
               </div>
 
@@ -1145,12 +1449,14 @@ function Dashboard() {
 
                 <div>
                   <strong>
-                    Candidate abuse network detected
+                    Candidate abuse network
+                    detected
                   </strong>
 
                   <span>
-                    Network intelligence identified
-                    suspicious entity relationships.
+                    Network intelligence
+                    identified suspicious
+                    entity relationships.
                   </span>
                 </div>
 
@@ -1165,12 +1471,13 @@ function Dashboard() {
 
                 <div>
                   <strong>
-                    Multiple risk signals active
+                    Multiple risk signals
+                    active
                   </strong>
 
                   <span>
-                    Review transactions with elevated
-                    behavioral risk.
+                    Review transactions with
+                    elevated behavioral risk.
                   </span>
                 </div>
 
@@ -1185,7 +1492,8 @@ function Dashboard() {
 
                 <div>
                   <strong>
-                    Network monitoring operational
+                    Network monitoring
+                    operational
                   </strong>
 
                   <span>
@@ -1208,11 +1516,26 @@ function Dashboard() {
       </main>
 
 
+      {/* -----------------------------------------------------
+          Investigation Panel
+      ----------------------------------------------------- */}
+
       <InvestigationPanel
-        transaction={selectedTransaction}
-        loading={investigationLoading}
-        error={investigationError}
-        onClose={closeInvestigation}
+        transaction={
+          selectedTransaction
+        }
+        loading={
+          investigationLoading
+        }
+        error={
+          investigationError
+        }
+        onClose={
+          closeInvestigation
+        }
+        mlScore={mlScore}
+        mlLoading={mlLoading}
+        mlError={mlError}
       />
 
     </div>
