@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from backend.app.policy.engine import make_decision
 from backend.app.policy.cost_optimizer import optimize_decision
 from backend.app.network.fraud_spike import detect_fraud_spike
+from backend.app.services.dashboard import build_dashboard_summary
 
 
 app = FastAPI(
@@ -152,6 +153,40 @@ def fraud_spike_status():
         "baseline_fraud_rate": result.baseline_fraud_rate,
         "spike_ratio": result.spike_ratio,
         "severity": result.severity,
+    }
+
+
+@app.get("/dashboard/summary", tags=["Dashboard"])
+def dashboard_summary():
+    dataset_path = (
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "transactions_processed.csv"
+    )
+
+    if not dataset_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Processed transaction dataset is not available.",
+        )
+
+    transactions = pd.read_csv(dataset_path)
+
+    summary = build_dashboard_summary(transactions)
+
+    return {
+        "total_transactions": summary.total_transactions,
+        "fraud_transactions": summary.fraud_transactions,
+        "legitimate_transactions": summary.legitimate_transactions,
+        "fraud_rate": summary.fraud_rate,
+        "total_amount": summary.total_amount,
+        "average_transaction_amount": (
+            summary.average_transaction_amount
+        ),
+        "network_risk_score": summary.network_risk_score,
+        "fraud_spike": summary.fraud_spike,
+        "abuse_ring_detected": summary.abuse_ring_detected,
     }
 
 
