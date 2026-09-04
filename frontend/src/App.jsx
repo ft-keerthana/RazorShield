@@ -15,6 +15,12 @@ import {
   Shield,
   ShieldCheck,
   Users,
+  X,
+  Clock3,
+  MapPin,
+  Smartphone,
+  Globe,
+  AlertCircle,
 } from "lucide-react";
 
 import {
@@ -28,7 +34,12 @@ import {
 } from "recharts";
 
 import "./index.css";
-import { getDashboardSummary } from "./services/api";
+
+import {
+  getDashboardSummary,
+  getRecentTransactions,
+  getTransactionInvestigation,
+} from "./services/api";
 
 
 // ---------------------------------------------------------
@@ -44,59 +55,6 @@ const fraudTrend = [
   { day: "Sep 2", rate: 4.0 },
   { day: "Sep 3", rate: 2.6 },
   { day: "Sep 4", rate: 2.9 },
-];
-
-
-// ---------------------------------------------------------
-// Demo transactions
-// ---------------------------------------------------------
-
-const transactions = [
-  {
-    id: "txn_955728888081",
-    amount: "$1,171.95",
-    customer: "cust_fc81df20a609",
-    score: "0.05",
-    decision: "ALLOW",
-    risk: "low",
-    time: "2 mins ago",
-  },
-  {
-    id: "txn_4199ef5ba33c",
-    amount: "$299.18",
-    customer: "cust_193b89fd05b6",
-    score: "0.42",
-    decision: "REVIEW",
-    risk: "medium",
-    time: "5 mins ago",
-  },
-  {
-    id: "txn_d943d97a1875",
-    amount: "$46.67",
-    customer: "cust_4102be1bcb53",
-    score: "0.02",
-    decision: "ALLOW",
-    risk: "low",
-    time: "8 mins ago",
-  },
-  {
-    id: "txn_c22702e86ec4",
-    amount: "$312.27",
-    customer: "cust_214456f685e0",
-    score: "0.31",
-    decision: "REVIEW",
-    risk: "medium",
-    time: "12 mins ago",
-  },
-  {
-    id: "txn_17571e32b758",
-    amount: "$67.55",
-    customer: "cust_1f9e9d6d4f13",
-    score: "0.01",
-    decision: "ALLOW",
-    risk: "low",
-    time: "15 mins ago",
-  },
 ];
 
 
@@ -437,10 +395,303 @@ function RiskDistribution({ dashboardData }) {
 
 
 // ---------------------------------------------------------
+// Investigation Panel
+// ---------------------------------------------------------
+
+function InvestigationPanel({
+  transaction,
+  loading,
+  error,
+  onClose,
+}) {
+  if (!transaction && !loading && !error) {
+    return null;
+  }
+
+  return (
+    <div className="investigation-overlay">
+      <div className="investigation-panel">
+
+        <div className="investigation-header">
+          <div>
+            <span className="investigation-eyebrow">
+              TRANSACTION INVESTIGATION
+            </span>
+
+            <h2>
+              {transaction?.transaction_id || "Loading..."}
+            </h2>
+          </div>
+
+          <button
+            className="investigation-close"
+            onClick={onClose}
+            aria-label="Close investigation"
+          >
+            <X size={19} />
+          </button>
+        </div>
+
+
+        {loading && (
+          <div className="investigation-loading">
+            <div className="investigation-spinner" />
+            Loading transaction intelligence...
+          </div>
+        )}
+
+
+        {error && !loading && (
+          <div className="investigation-error">
+            <AlertCircle size={20} />
+            <div>
+              <strong>Investigation unavailable</strong>
+              <span>{error}</span>
+            </div>
+          </div>
+        )}
+
+
+        {transaction && !loading && !error && (
+          <div className="investigation-content">
+
+            {/* Risk summary */}
+
+            <div className="investigation-risk-card">
+              <div>
+                <span className="investigation-label">
+                  RULE RISK SCORE
+                </span>
+
+                <strong
+                  className={`investigation-score ${transaction.rule_risk_level}`}
+                >
+                  {Number(
+                    transaction.rule_risk_score
+                  ).toFixed(2)}
+                </strong>
+
+                <span
+                  className={`investigation-risk-level ${transaction.rule_risk_level}`}
+                >
+                  {transaction.rule_risk_level?.toUpperCase()}
+                </span>
+              </div>
+
+              <div className="investigation-ground-truth">
+                <span>SCENARIO</span>
+                <strong>
+                  {transaction.scenario
+                    ?.replaceAll("_", " ")
+                    .toUpperCase()}
+                </strong>
+              </div>
+            </div>
+
+
+            {/* Transaction details */}
+
+            <div className="investigation-section">
+              <div className="investigation-section-title">
+                <CreditCard size={16} />
+                Transaction Details
+              </div>
+
+              <div className="investigation-detail-grid">
+
+                <div className="investigation-detail">
+                  <span>Amount</span>
+                  <strong>
+                    {transaction.currency}{" "}
+                    {Number(transaction.amount).toFixed(2)}
+                  </strong>
+                </div>
+
+                <div className="investigation-detail">
+                  <span>Status</span>
+                  <strong className="capitalize">
+                    {transaction.status}
+                  </strong>
+                </div>
+
+                <div className="investigation-detail">
+                  <span>Customer</span>
+                  <strong>
+                    {transaction.customer_id}
+                  </strong>
+                </div>
+
+                <div className="investigation-detail">
+                  <span>Merchant</span>
+                  <strong>
+                    {transaction.merchant_id}
+                  </strong>
+                </div>
+
+                <div className="investigation-detail">
+                  <span>Timestamp</span>
+                  <strong>
+                    {new Date(
+                      transaction.timestamp
+                    ).toLocaleString()}
+                  </strong>
+                </div>
+
+                <div className="investigation-detail">
+                  <span>Scenario</span>
+                  <strong className="capitalize">
+                    {transaction.scenario?.replaceAll(
+                      "_",
+                      " "
+                    )}
+                  </strong>
+                </div>
+
+              </div>
+            </div>
+
+
+            {/* Risk reasons */}
+
+            <div className="investigation-section">
+              <div className="investigation-section-title">
+                <AlertTriangle size={16} />
+                Risk Signals
+              </div>
+
+              {transaction.risk_reasons?.length > 0 ? (
+                <div className="risk-reason-list">
+                  {transaction.risk_reasons.map(
+                    (reason, index) => (
+                      <div
+                        className="risk-reason"
+                        key={`${reason}-${index}`}
+                      >
+                        <span className="risk-reason-dot" />
+                        <span>{reason}</span>
+                      </div>
+                    )
+                  )}
+                </div>
+              ) : (
+                <div className="no-risk-signals">
+                  No rule-based risk signals detected.
+                </div>
+              )}
+            </div>
+
+
+            {/* Behavioral signals */}
+
+            <div className="investigation-section">
+              <div className="investigation-section-title">
+                <Activity size={16} />
+                Behavioral Signals
+              </div>
+
+              <div className="signal-grid">
+
+                <div className="signal-card">
+                  <Clock3 size={15} />
+                  <span>Customer velocity · 5m</span>
+                  <strong>
+                    {transaction.customer_velocity_5m}
+                  </strong>
+                </div>
+
+                <div className="signal-card">
+                  <Clock3 size={15} />
+                  <span>Customer velocity · 1h</span>
+                  <strong>
+                    {transaction.customer_velocity_1h}
+                  </strong>
+                </div>
+
+                <div className="signal-card">
+                  <Smartphone size={15} />
+                  <span>Device velocity · 5m</span>
+                  <strong>
+                    {transaction.device_velocity_5m}
+                  </strong>
+                </div>
+
+                <div className="signal-card">
+                  <Globe size={15} />
+                  <span>IP velocity · 5m</span>
+                  <strong>
+                    {transaction.ip_velocity_5m}
+                  </strong>
+                </div>
+
+                <div className="signal-card">
+                  <AlertTriangle size={15} />
+                  <span>Failed attempts · 1h</span>
+                  <strong>
+                    {transaction.failed_attempts_1h}
+                  </strong>
+                </div>
+
+                <div className="signal-card">
+                  <Users size={15} />
+                  <span>Shared device</span>
+                  <strong>
+                    {transaction.shared_device_flag
+                      ? "Yes"
+                      : "No"}
+                  </strong>
+                </div>
+
+                <div className="signal-card">
+                  <Network size={15} />
+                  <span>Shared IP</span>
+                  <strong>
+                    {transaction.shared_ip_flag
+                      ? "Yes"
+                      : "No"}
+                  </strong>
+                </div>
+
+              </div>
+            </div>
+
+
+            {/* Investigation note */}
+
+            <div className="investigation-note">
+              <ShieldCheck size={17} />
+
+              <div>
+                <strong>
+                  Investigator view
+                </strong>
+
+                <span>
+                  Signals shown here are derived from
+                  RazorSentry's rule and behavioral
+                  analysis pipeline. ML scoring and
+                  policy decisions will be displayed
+                  in the next stage.
+                </span>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+
+// ---------------------------------------------------------
 // Recent Transactions
 // ---------------------------------------------------------
 
-function RecentTransactions() {
+function RecentTransactions({
+  transactions,
+  onSelectTransaction,
+}) {
   return (
     <section className="card transactions-card">
       <div className="card-header">
@@ -462,52 +713,85 @@ function RecentTransactions() {
               <th>AMOUNT</th>
               <th>CUSTOMER</th>
               <th>RISK SCORE</th>
-              <th>DECISION</th>
+              <th>RISK LEVEL</th>
               <th>TIME</th>
             </tr>
           </thead>
 
           <tbody>
-            {transactions.map((transaction) => (
-              <tr key={transaction.id}>
-                <td>
-                  <div className="transaction-id">
-                    <span
-                      className={`risk-dot ${transaction.risk}`}
-                    />
-                    {transaction.id}
-                  </div>
-                </td>
-
-                <td className="amount">
-                  {transaction.amount}
-                </td>
-
-                <td className="customer">
-                  {transaction.customer}
-                </td>
-
-                <td>
-                  <span
-                    className={`score ${transaction.risk}`}
-                  >
-                    {transaction.score}
-                  </span>
-                </td>
-
-                <td>
-                  <span
-                    className={`decision ${transaction.decision.toLowerCase()}`}
-                  >
-                    {transaction.decision}
-                  </span>
-                </td>
-
-                <td className="time">
-                  {transaction.time}
+            {transactions.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="time">
+                  No recent transactions available.
                 </td>
               </tr>
-            ))}
+            ) : (
+              transactions.map((transaction) => {
+                const risk =
+                  transaction.risk_level || "low";
+
+                const score =
+                  transaction.risk_score ?? 0;
+
+                return (
+                  <tr
+                    key={transaction.transaction_id}
+                    className="transaction-row"
+                    onClick={() =>
+                      onSelectTransaction(
+                        transaction.transaction_id
+                      )
+                    }
+                  >
+                    <td>
+                      <div className="transaction-id">
+                        <span
+                          className={`risk-dot ${risk}`}
+                        />
+
+                        {transaction.transaction_id}
+                      </div>
+                    </td>
+
+                    <td className="amount">
+                      {transaction.currency}{" "}
+                      {Number(
+                        transaction.amount
+                      ).toFixed(2)}
+                    </td>
+
+                    <td className="customer">
+                      {transaction.customer_id || "—"}
+                    </td>
+
+                    <td>
+                      <span
+                        className={`score ${risk}`}
+                      >
+                        {Number(score).toFixed(2)}
+                      </span>
+                    </td>
+
+                    <td>
+                      <span
+                        className={`risk-level-badge ${risk}`}
+                      >
+                        {risk.toUpperCase()}
+                      </span>
+                    </td>
+
+                    <td className="time">
+                      {new Date(
+                        transaction.timestamp
+                      ).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
@@ -521,16 +805,50 @@ function RecentTransactions() {
 // ---------------------------------------------------------
 
 function Dashboard() {
-  const [dashboardData, setDashboardData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [dashboardData, setDashboardData] =
+    useState(null);
+
+  const [recentTransactions, setRecentTransactions] =
+    useState([]);
+
+  const [selectedTransaction, setSelectedTransaction] =
+    useState(null);
+
+  const [investigationLoading, setInvestigationLoading] =
+    useState(false);
+
+  const [investigationError, setInvestigationError] =
+    useState("");
+
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
+
 
   useEffect(() => {
     const loadDashboard = async () => {
       try {
-        const data = await getDashboardSummary();
+        const [
+          dashboardSummary,
+          transactions,
+        ] = await Promise.all([
+          getDashboardSummary(),
+          getRecentTransactions(),
+        ]);
 
-        setDashboardData(data);
+        setDashboardData(dashboardSummary);
+
+        setRecentTransactions(
+          transactions.map((transaction) => ({
+            ...transaction,
+            customer_id:
+              transaction.customer_id || null,
+          }))
+        );
+
       } catch (err) {
         console.error(
           "Failed to load dashboard:",
@@ -547,6 +865,45 @@ function Dashboard() {
 
     loadDashboard();
   }, []);
+
+
+  const handleSelectTransaction = async (
+    transactionId
+  ) => {
+    setSelectedTransaction(null);
+    setInvestigationError("");
+    setInvestigationLoading(true);
+
+    try {
+      const investigation =
+        await getTransactionInvestigation(
+          transactionId
+        );
+
+      setSelectedTransaction(investigation);
+
+    } catch (err) {
+      console.error(
+        "Failed to load investigation:",
+        err
+      );
+
+      setInvestigationError(
+        err.response?.data?.detail ||
+        "Unable to load transaction investigation."
+      );
+
+    } finally {
+      setInvestigationLoading(false);
+    }
+  };
+
+
+  const closeInvestigation = () => {
+    setSelectedTransaction(null);
+    setInvestigationError("");
+    setInvestigationLoading(false);
+  };
 
 
   if (loading) {
@@ -578,10 +935,6 @@ function Dashboard() {
 
         <div className="dashboard-content">
 
-          {/* ----------------------------------------- */}
-          {/* LIVE STAT CARDS */}
-          {/* ----------------------------------------- */}
-
           <div className="stat-grid">
 
             <StatCard
@@ -592,7 +945,6 @@ function Dashboard() {
               variant="purple"
             />
 
-
             <StatCard
               icon={<Activity size={21} />}
               title="Fraud Rate"
@@ -602,7 +954,6 @@ function Dashboard() {
               description={`${dashboardData.fraud_transactions.toLocaleString()} flagged as fraud`}
               variant="red"
             />
-
 
             <StatCard
               icon={<Network size={21} />}
@@ -620,7 +971,6 @@ function Dashboard() {
               variant="blue"
             />
 
-
             <StatCard
               icon={<BarChart3 size={21} />}
               title="Transaction Volume"
@@ -630,7 +980,6 @@ function Dashboard() {
               description={`Average $${dashboardData.average_transaction_amount.toFixed(2)}`}
               variant="green"
             />
-
 
             <StatCard
               icon={<AlertTriangle size={21} />}
@@ -645,18 +994,14 @@ function Dashboard() {
           </div>
 
 
-          {/* ----------------------------------------- */}
-          {/* DASHBOARD GRID */}
-          {/* ----------------------------------------- */}
-
           <div className="dashboard-grid">
 
-            {/* Fraud Trend */}
             <section className="card chart-card">
 
               <div className="card-header">
                 <div>
                   <h2>Fraud Rate Trend</h2>
+
                   <p>
                     Recent fraud activity across the
                     monitoring window
@@ -669,7 +1014,6 @@ function Dashboard() {
                 </button>
               </div>
 
-
               <div className="chart-container">
 
                 <ResponsiveContainer
@@ -680,7 +1024,6 @@ function Dashboard() {
                   <AreaChart data={fraudTrend}>
 
                     <defs>
-
                       <linearGradient
                         id="fraudGradient"
                         x1="0"
@@ -700,16 +1043,13 @@ function Dashboard() {
                           stopOpacity={0.02}
                         />
                       </linearGradient>
-
                     </defs>
-
 
                     <CartesianGrid
                       strokeDasharray="3 3"
                       vertical={false}
                       stroke="#E5E7EB"
                     />
-
 
                     <XAxis
                       dataKey="day"
@@ -720,7 +1060,6 @@ function Dashboard() {
                         fontSize: 12,
                       }}
                     />
-
 
                     <YAxis
                       domain={[0, 5]}
@@ -735,14 +1074,12 @@ function Dashboard() {
                       }}
                     />
 
-
                     <Tooltip
                       formatter={(value) => [
                         `${value}%`,
                         "Fraud rate",
                       ]}
                     />
-
 
                     <Area
                       type="monotone"
@@ -761,27 +1098,25 @@ function Dashboard() {
             </section>
 
 
-            {/* Network Intelligence */}
             <NetworkIntelligence
               dashboardData={dashboardData}
             />
 
 
-            {/* Recent Transactions */}
-            <RecentTransactions />
+            <RecentTransactions
+              transactions={recentTransactions}
+              onSelectTransaction={
+                handleSelectTransaction
+              }
+            />
 
 
-            {/* Real dataset outcome */}
             <RiskDistribution
               dashboardData={dashboardData}
             />
 
           </div>
 
-
-          {/* ----------------------------------------- */}
-          {/* INSIGHTS */}
-          {/* ----------------------------------------- */}
 
           <section className="insights-card">
 
@@ -871,6 +1206,14 @@ function Dashboard() {
         </div>
 
       </main>
+
+
+      <InvestigationPanel
+        transaction={selectedTransaction}
+        loading={investigationLoading}
+        error={investigationError}
+        onClose={closeInvestigation}
+      />
 
     </div>
   );

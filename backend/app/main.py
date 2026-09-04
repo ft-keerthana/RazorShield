@@ -201,6 +201,48 @@ def dashboard_summary():
         "fraud_spike": summary.fraud_spike,
         "abuse_ring_detected": summary.abuse_ring_detected,
     }
+@app.get("/transactions/recent", tags=["Transactions"])
+def recent_transactions(limit: int = 8):
+    dataset_path = (
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "transactions_processed.csv"
+    )
+
+    if not dataset_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Processed transaction dataset is not available.",
+        )
+
+    transactions = pd.read_csv(dataset_path)
+
+    transactions["timestamp"] = pd.to_datetime(
+        transactions["timestamp"],
+        errors="coerce",
+    )
+
+    recent = (
+        transactions
+        .sort_values("timestamp", ascending=False)
+        .head(limit)
+    )
+
+    return [
+        {
+            "transaction_id": str(row["transaction_id"]),
+            "customer_id": str(row["customer_id"]),
+            "amount": round(float(row["amount"]), 2),
+            "currency": str(row["currency"]),
+            "status": str(row["status"]),
+            "timestamp": str(row["timestamp"]),
+            "scenario": str(row["scenario"]),
+            "risk_score": round(float(row["rule_risk_score"]), 6),
+            "risk_level": str(row["rule_risk_level"]),
+        }
+        for _, row in recent.iterrows()
+    ]
 @app.get(
     "/transactions/{transaction_id}",
     tags=["Transactions"],
@@ -273,47 +315,7 @@ def score_transaction(transaction: TransactionScoreRequest):
             }
         ]
     )
-@app.get("/transactions/recent", tags=["Transactions"])
-def recent_transactions(limit: int = 8):
-    dataset_path = (
-        PROJECT_ROOT
-        / "data"
-        / "processed"
-        / "transactions_processed.csv"
-    )
 
-    if not dataset_path.exists():
-        raise HTTPException(
-            status_code=404,
-            detail="Processed transaction dataset is not available.",
-        )
-
-    transactions = pd.read_csv(dataset_path)
-
-    transactions["timestamp"] = pd.to_datetime(
-        transactions["timestamp"],
-        errors="coerce",
-    )
-
-    recent = (
-        transactions
-        .sort_values("timestamp", ascending=False)
-        .head(limit)
-    )
-
-    return [
-        {
-            "transaction_id": str(row["transaction_id"]),
-            "amount": round(float(row["amount"]), 2),
-            "currency": str(row["currency"]),
-            "status": str(row["status"]),
-            "timestamp": str(row["timestamp"]),
-            "scenario": str(row["scenario"]),
-            "risk_score": round(float(row["rule_risk_score"]), 6),
-            "risk_level": str(row["rule_risk_level"]),
-        }
-        for _, row in recent.iterrows()
-    ]
 
     fraud_probability = float(
         model.predict_proba(features)[0][1]
