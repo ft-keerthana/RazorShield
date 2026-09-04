@@ -5,6 +5,9 @@ import pandas as pd
 from fastapi import FastAPI
 from pydantic import BaseModel
 from backend.app.policy.engine import make_decision
+from fastapi import HTTPException
+from backend.app.network.fraud_spike import detect_fraud_spike
+
 
 app = FastAPI(
     title="RazorShield API",
@@ -121,6 +124,27 @@ def model_status():
         "model_path": str(MODEL_PATH),
         "model_name": "calibrated_behavior_aware_fraud_model",
     }
+
+@app.get("/network/fraud-spike", tags=["Network Intelligence"])
+def fraud_spike_status():
+    dataset_path = PROJECT_ROOT / "data" / "processed" / "transactions_processed.csv"
+
+    if not dataset_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Processed transaction dataset is not available.",
+        )
+
+    transactions = pd.read_csv(dataset_path)
+
+    result = detect_fraud_spike(transactions)
+
+    return {
+        "fraud_spike": result.fraud_spike,
+        "recent_fraud_rate": result.recent_fraud_rate,
+        "baseline_fraud_rate": result.baseline_fraud_rate,
+        "spike_ratio": result.spike_ratio,
+        "severity": result.severity,}
 
 
 @app.post("/transactions/score", tags=["Transactions"])
