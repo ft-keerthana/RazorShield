@@ -9,7 +9,9 @@ from backend.app.policy.engine import make_decision
 from backend.app.policy.cost_optimizer import optimize_decision
 from backend.app.network.fraud_spike import detect_fraud_spike
 from backend.app.services.dashboard import build_dashboard_summary
-
+from backend.app.services.investigation import (
+    get_transaction_investigation,
+)
 
 app = FastAPI(
     title="RazorShield API",
@@ -188,7 +190,58 @@ def dashboard_summary():
         "fraud_spike": summary.fraud_spike,
         "abuse_ring_detected": summary.abuse_ring_detected,
     }
+@app.get(
+    "/transactions/{transaction_id}",
+    tags=["Transactions"],
+)
+def transaction_investigation(transaction_id: str):
+    dataset_path = (
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "transactions_processed.csv"
+    )
 
+    if not dataset_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Processed transaction dataset is not available.",
+        )
+
+    transactions = pd.read_csv(dataset_path)
+
+    try:
+        investigation = get_transaction_investigation(
+            transactions,
+            transaction_id,
+        )
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        ) from exc
+
+    return {
+        "transaction_id": investigation.transaction_id,
+        "customer_id": investigation.customer_id,
+        "merchant_id": investigation.merchant_id,
+        "amount": investigation.amount,
+        "currency": investigation.currency,
+        "status": investigation.status,
+        "timestamp": investigation.timestamp,
+        "scenario": investigation.scenario,
+        "is_fraud": investigation.is_fraud,
+        "rule_risk_score": investigation.rule_risk_score,
+        "rule_risk_level": investigation.rule_risk_level,
+        "risk_reasons": investigation.risk_reasons,
+        "shared_device_flag": investigation.shared_device_flag,
+        "shared_ip_flag": investigation.shared_ip_flag,
+        "customer_velocity_5m": investigation.customer_velocity_5m,
+        "customer_velocity_1h": investigation.customer_velocity_1h,
+        "device_velocity_5m": investigation.device_velocity_5m,
+        "ip_velocity_5m": investigation.ip_velocity_5m,
+        "failed_attempts_1h": investigation.failed_attempts_1h,
+    }
 
 @app.post("/transactions/score", tags=["Transactions"])
 def score_transaction(transaction: TransactionScoreRequest):
