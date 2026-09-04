@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import {
   Activity,
   AlertTriangle,
@@ -26,6 +28,12 @@ import {
 } from "recharts";
 
 import "./index.css";
+import { getDashboardSummary } from "./services/api";
+
+
+// ---------------------------------------------------------
+// Demo trend data
+// ---------------------------------------------------------
 
 const fraudTrend = [
   { day: "Aug 28", rate: 1.8 },
@@ -37,6 +45,11 @@ const fraudTrend = [
   { day: "Sep 3", rate: 2.6 },
   { day: "Sep 4", rate: 2.9 },
 ];
+
+
+// ---------------------------------------------------------
+// Demo transactions
+// ---------------------------------------------------------
 
 const transactions = [
   {
@@ -85,6 +98,11 @@ const transactions = [
     time: "15 mins ago",
   },
 ];
+
+
+// ---------------------------------------------------------
+// Sidebar
+// ---------------------------------------------------------
 
 function Sidebar() {
   return (
@@ -161,6 +179,11 @@ function Sidebar() {
   );
 }
 
+
+// ---------------------------------------------------------
+// Header
+// ---------------------------------------------------------
+
 function Header() {
   return (
     <header className="header">
@@ -196,6 +219,11 @@ function Header() {
   );
 }
 
+
+// ---------------------------------------------------------
+// Stat Card
+// ---------------------------------------------------------
+
 function StatCard({
   icon,
   title,
@@ -205,11 +233,14 @@ function StatCard({
 }) {
   return (
     <div className="stat-card">
-      <div className={`stat-icon ${variant}`}>{icon}</div>
+      <div className={`stat-icon ${variant}`}>
+        {icon}
+      </div>
 
       <div className="stat-content">
         <span className="stat-title">{title}</span>
         <strong className="stat-value">{value}</strong>
+
         <span className={`stat-description ${variant}`}>
           {description}
         </span>
@@ -218,7 +249,21 @@ function StatCard({
   );
 }
 
-function NetworkIntelligence() {
+
+// ---------------------------------------------------------
+// Network Intelligence
+// ---------------------------------------------------------
+
+function NetworkIntelligence({ dashboardData }) {
+  const networkRisk = dashboardData.network_risk_score;
+
+  const networkRiskLabel =
+    networkRisk >= 0.7
+      ? "High network risk"
+      : networkRisk >= 0.4
+        ? "Medium network risk"
+        : "Low network risk";
+
   return (
     <section className="card network-card">
       <div className="card-header">
@@ -231,6 +276,7 @@ function NetworkIntelligence() {
       </div>
 
       <div className="network-list">
+
         <div className="network-item">
           <div className="network-icon purple">
             <Activity size={17} />
@@ -241,8 +287,19 @@ function NetworkIntelligence() {
             <span>Recent fraud activity</span>
           </div>
 
-          <span className="network-status safe">No Spike</span>
+          <span
+            className={`network-status ${
+              dashboardData.fraud_spike
+                ? "warning"
+                : "safe"
+            }`}
+          >
+            {dashboardData.fraud_spike
+              ? "Detected"
+              : "No Spike"}
+          </span>
         </div>
+
 
         <div className="network-item">
           <div className="network-icon purple">
@@ -254,8 +311,19 @@ function NetworkIntelligence() {
             <span>Candidate network detection</span>
           </div>
 
-          <span className="network-status warning">Detected</span>
+          <span
+            className={`network-status ${
+              dashboardData.abuse_ring_detected
+                ? "warning"
+                : "safe"
+            }`}
+          >
+            {dashboardData.abuse_ring_detected
+              ? "Detected"
+              : "None"}
+          </span>
         </div>
+
 
         <div className="network-item">
           <div className="network-icon blue">
@@ -263,12 +331,15 @@ function NetworkIntelligence() {
           </div>
 
           <div className="network-label">
-            <strong>Shared Devices</strong>
-            <span>Entities sharing devices</span>
+            <strong>Network Risk</strong>
+            <span>{networkRiskLabel}</span>
           </div>
 
-          <strong className="network-number">998</strong>
+          <strong className="network-number">
+            {Math.round(networkRisk * 100)}
+          </strong>
         </div>
+
 
         <div className="network-item">
           <div className="network-icon blue">
@@ -276,12 +347,15 @@ function NetworkIntelligence() {
           </div>
 
           <div className="network-label">
-            <strong>Shared IPs</strong>
-            <span>Entities sharing IP addresses</span>
+            <strong>Network Status</strong>
+            <span>Aggregated intelligence</span>
           </div>
 
-          <strong className="network-number">947</strong>
+          <strong className="network-number">
+            Active
+          </strong>
         </div>
+
       </div>
 
       <button className="primary-button">
@@ -292,53 +366,79 @@ function NetworkIntelligence() {
   );
 }
 
-function RiskDistribution() {
+
+// ---------------------------------------------------------
+// Risk Distribution
+// ---------------------------------------------------------
+
+function RiskDistribution({ dashboardData }) {
+  const total = dashboardData.total_transactions;
+  const fraud = dashboardData.fraud_transactions;
+  const legitimate = dashboardData.legitimate_transactions;
+
+  const fraudPercentage = total
+    ? ((fraud / total) * 100).toFixed(1)
+    : "0.0";
+
+  const legitimatePercentage = total
+    ? ((legitimate / total) * 100).toFixed(1)
+    : "0.0";
+
   return (
     <section className="card distribution-card">
       <div className="card-header">
         <div>
-          <h2>Risk Distribution</h2>
-          <p>Transaction risk classification</p>
+          <h2>Transaction Outcome</h2>
+          <p>Ground-truth dataset distribution</p>
         </div>
       </div>
 
       <div className="distribution">
+
         <div className="donut">
           <div className="donut-center">
-            <strong>10,000</strong>
+            <strong>{total.toLocaleString()}</strong>
             <span>Total</span>
           </div>
         </div>
 
         <div className="legend">
+
           <div className="legend-item">
             <span className="legend-dot green" />
+
             <div>
-              <strong>Low Risk</strong>
-              <span>6,430 · 64.3%</span>
+              <strong>Legitimate</strong>
+              <span>
+                {legitimate.toLocaleString()} ·{" "}
+                {legitimatePercentage}%
+              </span>
             </div>
           </div>
 
-          <div className="legend-item">
-            <span className="legend-dot orange" />
-            <div>
-              <strong>Medium Risk</strong>
-              <span>3,258 · 32.6%</span>
-            </div>
-          </div>
 
           <div className="legend-item">
             <span className="legend-dot red" />
+
             <div>
-              <strong>High Risk</strong>
-              <span>312 · 3.1%</span>
+              <strong>Fraud</strong>
+              <span>
+                {fraud.toLocaleString()} ·{" "}
+                {fraudPercentage}%
+              </span>
             </div>
           </div>
+
         </div>
       </div>
     </section>
   );
 }
+
+
+// ---------------------------------------------------------
+// Recent Transactions
+// ---------------------------------------------------------
 
 function RecentTransactions() {
   return (
@@ -349,7 +449,9 @@ function RecentTransactions() {
           <p>Latest transactions evaluated by RazorSentry</p>
         </div>
 
-        <button className="secondary-button">View All</button>
+        <button className="secondary-button">
+          View All
+        </button>
       </div>
 
       <div className="transaction-table-wrapper">
@@ -370,19 +472,25 @@ function RecentTransactions() {
               <tr key={transaction.id}>
                 <td>
                   <div className="transaction-id">
-                    <span className={`risk-dot ${transaction.risk}`} />
+                    <span
+                      className={`risk-dot ${transaction.risk}`}
+                    />
                     {transaction.id}
                   </div>
                 </td>
 
-                <td className="amount">{transaction.amount}</td>
+                <td className="amount">
+                  {transaction.amount}
+                </td>
 
                 <td className="customer">
                   {transaction.customer}
                 </td>
 
                 <td>
-                  <span className={`score ${transaction.risk}`}>
+                  <span
+                    className={`score ${transaction.risk}`}
+                  >
                     {transaction.score}
                   </span>
                 </td>
@@ -395,7 +503,9 @@ function RecentTransactions() {
                   </span>
                 </td>
 
-                <td className="time">{transaction.time}</td>
+                <td className="time">
+                  {transaction.time}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -405,63 +515,152 @@ function RecentTransactions() {
   );
 }
 
+
+// ---------------------------------------------------------
+// Dashboard
+// ---------------------------------------------------------
+
 function Dashboard() {
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        const data = await getDashboardSummary();
+
+        setDashboardData(data);
+      } catch (err) {
+        console.error(
+          "Failed to load dashboard:",
+          err
+        );
+
+        setError(
+          "Unable to load live dashboard data."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboard();
+  }, []);
+
+
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        Loading RazorSentry...
+      </div>
+    );
+  }
+
+
+  if (error || !dashboardData) {
+    return (
+      <div className="loading-screen">
+        {error || "Dashboard data unavailable."}
+      </div>
+    );
+  }
+
+
   return (
     <div className="app-shell">
+
       <Sidebar />
 
       <main className="main-content">
+
         <Header />
 
         <div className="dashboard-content">
+
+          {/* ----------------------------------------- */}
+          {/* LIVE STAT CARDS */}
+          {/* ----------------------------------------- */}
+
           <div className="stat-grid">
+
             <StatCard
               icon={<CreditCard size={21} />}
               title="Total Transactions"
-              value="10,000"
+              value={dashboardData.total_transactions.toLocaleString()}
               description="Dataset transactions"
               variant="purple"
             />
 
+
             <StatCard
               icon={<Activity size={21} />}
               title="Fraud Rate"
-              value="2.91%"
-              description="291 flagged as fraud"
+              value={`${(
+                dashboardData.fraud_rate * 100
+              ).toFixed(2)}%`}
+              description={`${dashboardData.fraud_transactions.toLocaleString()} flagged as fraud`}
               variant="red"
             />
+
 
             <StatCard
               icon={<Network size={21} />}
               title="Network Risk Score"
-              value="60 / 100"
-              description="Medium network risk"
+              value={`${Math.round(
+                dashboardData.network_risk_score * 100
+              )} / 100`}
+              description={
+                dashboardData.network_risk_score >= 0.7
+                  ? "High network risk"
+                  : dashboardData.network_risk_score >= 0.4
+                    ? "Medium network risk"
+                    : "Low network risk"
+              }
               variant="blue"
             />
+
 
             <StatCard
               icon={<BarChart3 size={21} />}
               title="Transaction Volume"
-              value="$2.81M"
-              description="Average $280.56"
+              value={`$${(
+                dashboardData.total_amount / 1_000_000
+              ).toFixed(2)}M`}
+              description={`Average $${dashboardData.average_transaction_amount.toFixed(2)}`}
               variant="green"
             />
+
 
             <StatCard
               icon={<AlertTriangle size={21} />}
               title="Fraud Transactions"
-              value="291"
-              description="2.91% of transactions"
+              value={dashboardData.fraud_transactions.toLocaleString()}
+              description={`${(
+                dashboardData.fraud_rate * 100
+              ).toFixed(2)}% of transactions`}
               variant="orange"
             />
+
           </div>
 
+
+          {/* ----------------------------------------- */}
+          {/* DASHBOARD GRID */}
+          {/* ----------------------------------------- */}
+
           <div className="dashboard-grid">
+
+            {/* Fraud Trend */}
             <section className="card chart-card">
+
               <div className="card-header">
                 <div>
                   <h2>Fraud Rate Trend</h2>
-                  <p>Recent fraud activity across the monitoring window</p>
+                  <p>
+                    Recent fraud activity across the
+                    monitoring window
+                  </p>
                 </div>
 
                 <button className="secondary-button">
@@ -470,10 +669,18 @@ function Dashboard() {
                 </button>
               </div>
 
+
               <div className="chart-container">
-                <ResponsiveContainer width="100%" height="100%">
+
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                >
+
                   <AreaChart data={fraudTrend}>
+
                     <defs>
+
                       <linearGradient
                         id="fraudGradient"
                         x1="0"
@@ -486,13 +693,16 @@ function Dashboard() {
                           stopColor="#6F42C1"
                           stopOpacity={0.28}
                         />
+
                         <stop
                           offset="100%"
                           stopColor="#6F42C1"
                           stopOpacity={0.02}
                         />
                       </linearGradient>
+
                     </defs>
+
 
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -500,20 +710,31 @@ function Dashboard() {
                       stroke="#E5E7EB"
                     />
 
+
                     <XAxis
                       dataKey="day"
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: "#6B7280", fontSize: 12 }}
+                      tick={{
+                        fill: "#6B7280",
+                        fontSize: 12,
+                      }}
                     />
+
 
                     <YAxis
                       domain={[0, 5]}
-                      tickFormatter={(value) => `${value}%`}
+                      tickFormatter={(value) =>
+                        `${value}%`
+                      }
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: "#6B7280", fontSize: 12 }}
+                      tick={{
+                        fill: "#6B7280",
+                        fontSize: 12,
+                      }}
                     />
+
 
                     <Tooltip
                       formatter={(value) => [
@@ -522,6 +743,7 @@ function Dashboard() {
                       ]}
                     />
 
+
                     <Area
                       type="monotone"
                       dataKey="rate"
@@ -529,73 +751,130 @@ function Dashboard() {
                       strokeWidth={3}
                       fill="url(#fraudGradient)"
                     />
+
                   </AreaChart>
+
                 </ResponsiveContainer>
+
               </div>
+
             </section>
 
-            <NetworkIntelligence />
 
+            {/* Network Intelligence */}
+            <NetworkIntelligence
+              dashboardData={dashboardData}
+            />
+
+
+            {/* Recent Transactions */}
             <RecentTransactions />
 
-            <RiskDistribution />
+
+            {/* Real dataset outcome */}
+            <RiskDistribution
+              dashboardData={dashboardData}
+            />
+
           </div>
 
+
+          {/* ----------------------------------------- */}
+          {/* INSIGHTS */}
+          {/* ----------------------------------------- */}
+
           <section className="insights-card">
+
             <div className="insight-heading">
+
               <div className="insight-icon">
                 <ShieldCheck size={21} />
               </div>
 
               <div>
                 <h2>Risk Insights & Alerts</h2>
+
                 <p>
                   Operational signals requiring attention
                 </p>
               </div>
+
             </div>
+
 
             <div className="insight-items">
+
               <div className="insight-item">
+
                 <span className="insight-marker red" />
+
                 <div>
-                  <strong>Candidate abuse network detected</strong>
+                  <strong>
+                    Candidate abuse network detected
+                  </strong>
+
                   <span>
-                    Network intelligence identified suspicious
-                    entity relationships.
+                    Network intelligence identified
+                    suspicious entity relationships.
                   </span>
                 </div>
+
                 <button>View</button>
+
               </div>
 
+
               <div className="insight-item">
+
                 <span className="insight-marker orange" />
+
                 <div>
-                  <strong>Multiple risk signals active</strong>
+                  <strong>
+                    Multiple risk signals active
+                  </strong>
+
                   <span>
-                    Review transactions with elevated behavioral
-                    risk.
+                    Review transactions with elevated
+                    behavioral risk.
                   </span>
                 </div>
+
                 <button>View</button>
+
               </div>
 
+
               <div className="insight-item">
+
                 <span className="insight-marker purple" />
+
                 <div>
-                  <strong>Network monitoring operational</strong>
+                  <strong>
+                    Network monitoring operational
+                  </strong>
+
                   <span>
-                    No current fraud spike detected.
+                    {dashboardData.fraud_spike
+                      ? "A current fraud spike has been detected."
+                      : "No current fraud spike detected."}
                   </span>
                 </div>
+
                 <button>View</button>
+
               </div>
+
             </div>
+
           </section>
+
         </div>
+
       </main>
+
     </div>
   );
 }
+
 
 export default Dashboard;

@@ -3,6 +3,7 @@ from pathlib import Path
 import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from backend.app.policy.engine import make_decision
@@ -17,6 +18,16 @@ app = FastAPI(
     title="RazorShield API",
     description="AI-powered risk intelligence platform for modern payments",
     version="0.2.0",
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -262,6 +273,47 @@ def score_transaction(transaction: TransactionScoreRequest):
             }
         ]
     )
+@app.get("/transactions/recent", tags=["Transactions"])
+def recent_transactions(limit: int = 8):
+    dataset_path = (
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "transactions_processed.csv"
+    )
+
+    if not dataset_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Processed transaction dataset is not available.",
+        )
+
+    transactions = pd.read_csv(dataset_path)
+
+    transactions["timestamp"] = pd.to_datetime(
+        transactions["timestamp"],
+        errors="coerce",
+    )
+
+    recent = (
+        transactions
+        .sort_values("timestamp", ascending=False)
+        .head(limit)
+    )
+
+    return [
+        {
+            "transaction_id": str(row["transaction_id"]),
+            "amount": round(float(row["amount"]), 2),
+            "currency": str(row["currency"]),
+            "status": str(row["status"]),
+            "timestamp": str(row["timestamp"]),
+            "scenario": str(row["scenario"]),
+            "risk_score": round(float(row["rule_risk_score"]), 6),
+            "risk_level": str(row["rule_risk_level"]),
+        }
+        for _, row in recent.iterrows()
+    ]
 
     fraud_probability = float(
         model.predict_proba(features)[0][1]
