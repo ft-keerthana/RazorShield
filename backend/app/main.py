@@ -1,6 +1,6 @@
 from app.services.evaluation import get_evaluation_metrics
 from pathlib import Path
-
+from fastapi.middleware.cors import CORSMiddleware
 import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
@@ -25,6 +25,16 @@ app = FastAPI(
     title="RazorShield API",
     description="AI-powered risk intelligence platform for modern payments",
     version="0.2.0",
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://razorsentry.vercel.app",
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 app.add_middleware(
     CORSMiddleware,
