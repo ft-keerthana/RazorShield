@@ -1,4 +1,4 @@
-from backend.app.services.evaluation import get_evaluation_metrics
+from app.services.evaluation import get_evaluation_metrics
 from pathlib import Path
 
 import joblib
@@ -7,15 +7,15 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from backend.app.policy.engine import make_decision
-from backend.app.policy.cost_optimizer import optimize_decision
-from backend.app.network.fraud_spike import detect_fraud_spike
-from backend.app.services.dashboard import build_dashboard_summary
-from backend.app.services.investigation import (
+from app.policy.engine import make_decision
+from app.policy.cost_optimizer import optimize_decision
+from app.network.fraud_spike import detect_fraud_spike
+from app.services.dashboard import build_dashboard_summary
+from app.services.investigation import (
     get_transaction_investigation,
 )
-from backend.app.services.fraud_trend import build_fraud_trend
-from backend.app.services.network_intelligence import (
+from app.services.fraud_trend import build_fraud_trend
+from app.services.network_intelligence import (
     build_network_overview,
     build_suspicious_devices,
     build_suspicious_ips,

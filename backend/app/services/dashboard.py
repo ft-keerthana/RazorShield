@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from backend.app.network.risk_service import analyze_network_risk
+from app.network.risk_service import analyze_network_risk
 
 
 @dataclass

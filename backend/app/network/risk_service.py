@@ -2,11 +2,11 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from backend.app.network.entity_relationships import (
+from app.network.entity_relationships import (
     analyze_entity_relationships,
 )
-from backend.app.network.fraud_spike import detect_fraud_spike
-from backend.app.network.abuse_ring import detect_abuse_rings
+from app.network.fraud_spike import detect_fraud_spike
+from app.network.abuse_ring import detect_abuse_rings
 
 
 @dataclass
