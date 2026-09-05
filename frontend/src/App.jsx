@@ -1,4 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  getDashboardSummary,
+  getRecentTransactions,
+  getTransactionInvestigation,
+  scoreTransaction,
+  getFraudTrend,
+  getNetworkOverview,
+  getSuspiciousDevices,
+  getSuspiciousIPs,
+} from "./services/api";
 
 import {
   Activity,
@@ -21,6 +31,7 @@ import {
   Clock3,
   AlertCircle,
   CheckCircle2,
+  ArrowLeft,
 } from "lucide-react";
 
 import {
@@ -34,62 +45,6 @@ import {
 } from "recharts";
 
 import "./index.css";
-
-import {
-  getDashboardSummary,
-  getRecentTransactions,
-  getTransactionInvestigation,
-  scoreTransaction,
-} from "./services/api";
-
-
-// =========================================================
-// Demo trend data
-// =========================================================
-
-const fraudTrendData = {
-  "7 Days": [
-    { day: "Aug 29", rate: 2.7 },
-    { day: "Aug 30", rate: 2.0 },
-    { day: "Aug 31", rate: 3.4 },
-    { day: "Sep 1", rate: 3.0 },
-    { day: "Sep 2", rate: 4.0 },
-    { day: "Sep 3", rate: 2.6 },
-    { day: "Sep 4", rate: 2.9 },
-  ],
-
-  "14 Days": [
-    { day: "Aug 22", rate: 1.6 },
-    { day: "Aug 23", rate: 2.1 },
-    { day: "Aug 24", rate: 1.9 },
-    { day: "Aug 25", rate: 2.4 },
-    { day: "Aug 26", rate: 2.2 },
-    { day: "Aug 27", rate: 2.8 },
-    { day: "Aug 28", rate: 1.8 },
-    { day: "Aug 29", rate: 2.7 },
-    { day: "Aug 30", rate: 2.0 },
-    { day: "Aug 31", rate: 3.4 },
-    { day: "Sep 1", rate: 3.0 },
-    { day: "Sep 2", rate: 4.0 },
-    { day: "Sep 3", rate: 2.6 },
-    { day: "Sep 4", rate: 2.9 },
-  ],
-
-  "30 Days": [
-    { day: "Aug 6", rate: 1.4 },
-    { day: "Aug 9", rate: 1.8 },
-    { day: "Aug 12", rate: 2.0 },
-    { day: "Aug 15", rate: 2.4 },
-    { day: "Aug 18", rate: 2.1 },
-    { day: "Aug 21", rate: 2.8 },
-    { day: "Aug 24", rate: 1.9 },
-    { day: "Aug 27", rate: 2.8 },
-    { day: "Aug 30", rate: 2.0 },
-    { day: "Sep 2", rate: 4.0 },
-    { day: "Sep 4", rate: 2.9 },
-  ],
-};
-
 
 // =========================================================
 // Sidebar
@@ -117,7 +72,6 @@ function Sidebar({ activeSection, onNavigate }) {
         },
       ],
     },
-
     {
       section: "INTELLIGENCE",
       items: [
@@ -144,7 +98,6 @@ function Sidebar({ activeSection, onNavigate }) {
         },
       ],
     },
-
     {
       section: "SYSTEM",
       items: [
@@ -165,9 +118,7 @@ function Sidebar({ activeSection, onNavigate }) {
         </div>
 
         <div>
-          <div className="brand-name">
-            RAZORSENTRY
-          </div>
+          <div className="brand-name">RAZORSENTRY</div>
 
           <div className="brand-subtitle">
             Risk Intelligence
@@ -190,13 +141,9 @@ function Sidebar({ activeSection, onNavigate }) {
                   key={item.id}
                   type="button"
                   className={`nav-item ${
-                    activeSection === item.id
-                      ? "active"
-                      : ""
+                    activeSection === item.id ? "active" : ""
                   }`}
-                  onClick={() =>
-                    onNavigate(item.id)
-                  }
+                  onClick={() => onNavigate(item.id)}
                 >
                   <Icon size={19} />
 
@@ -228,7 +175,6 @@ function Sidebar({ activeSection, onNavigate }) {
   );
 }
 
-
 // =========================================================
 // Header
 // =========================================================
@@ -237,13 +183,10 @@ function Header({
   onNavigate,
   dateRange,
   setDateRange,
+  activeSection,
 }) {
-  const [dateMenuOpen, setDateMenuOpen] =
-    useState(false);
-
-  const [profileOpen, setProfileOpen] =
-    useState(false);
-
+  const [dateMenuOpen, setDateMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] =
     useState(false);
 
@@ -261,27 +204,21 @@ function Header({
     const handleOutsideClick = (event) => {
       if (
         dateDropdownRef.current &&
-        !dateDropdownRef.current.contains(
-          event.target
-        )
+        !dateDropdownRef.current.contains(event.target)
       ) {
         setDateMenuOpen(false);
       }
 
       if (
         notificationRef.current &&
-        !notificationRef.current.contains(
-          event.target
-        )
+        !notificationRef.current.contains(event.target)
       ) {
         setNotificationsOpen(false);
       }
 
       if (
         profileRef.current &&
-        !profileRef.current.contains(
-          event.target
-        )
+        !profileRef.current.contains(event.target)
       ) {
         setProfileOpen(false);
       }
@@ -314,21 +251,24 @@ function Header({
     }
   };
 
+  const isNetworkView = activeSection === "network";
+
   return (
     <header className="header">
       <div>
-        <h1>Dashboard</h1>
+        <h1>
+          {isNetworkView ? "Network Intelligence" : "Dashboard"}
+        </h1>
 
         <p>
-          Real-time payment risk intelligence overview
+          {isNetworkView
+            ? "Connected entity and infrastructure risk analysis"
+            : "Real-time payment risk intelligence overview"}
         </p>
       </div>
 
       <div className="header-actions">
-
-        {/* =================================================
-            DATE RANGE
-        ================================================= */}
+        {/* DATE RANGE */}
 
         <div
           className="header-dropdown"
@@ -353,9 +293,7 @@ function Header({
             <ChevronDown
               size={15}
               className={
-                dateMenuOpen
-                  ? "chevron-open"
-                  : ""
+                dateMenuOpen ? "chevron-open" : ""
               }
             />
           </button>
@@ -391,10 +329,7 @@ function Header({
           )}
         </div>
 
-
-        {/* =================================================
-            NOTIFICATIONS
-        ================================================= */}
+        {/* NOTIFICATIONS */}
 
         <div
           className="header-dropdown notification-wrapper"
@@ -421,7 +356,6 @@ function Header({
 
           {notificationsOpen && (
             <div className="notification-menu">
-
               <div className="notification-header">
                 <div>
                   <strong>Notifications</strong>
@@ -487,10 +421,7 @@ function Header({
           )}
         </div>
 
-
-        {/* =================================================
-            PROFILE
-        ================================================= */}
+        {/* PROFILE */}
 
         <div
           className="header-dropdown"
@@ -508,9 +439,7 @@ function Header({
               closeOtherMenus("profile");
             }}
           >
-            <div className="avatar">
-              K
-            </div>
+            <div className="avatar">K</div>
 
             <div>
               <strong>Keerthana</strong>
@@ -520,16 +449,13 @@ function Header({
             <ChevronDown
               size={15}
               className={
-                profileOpen
-                  ? "chevron-open"
-                  : ""
+                profileOpen ? "chevron-open" : ""
               }
             />
           </button>
 
           {profileOpen && (
             <div className="dropdown-menu profile-menu">
-
               <button
                 type="button"
                 onClick={() => {
@@ -551,16 +477,13 @@ function Header({
                 <BarChart3 size={15} />
                 <span>Reports</span>
               </button>
-
             </div>
           )}
         </div>
-
       </div>
     </header>
   );
 }
-
 
 // =========================================================
 // Stat Card
@@ -598,20 +521,21 @@ function StatCard({
   );
 }
 
-
 // =========================================================
-// Network Intelligence
+// Network Intelligence Summary
 // =========================================================
 
-function NetworkIntelligence({
+function NetworkIntelligenceSummary({
   dashboardData,
+  networkOverview,
+  networkLoading,
+  networkError,
   onNavigate,
 }) {
-  const [menuOpen, setMenuOpen] =
-    useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const networkRisk =
-    dashboardData.network_risk_score;
+    dashboardData?.network_risk_score ?? 0;
 
   const networkRiskLabel =
     networkRisk >= 0.7
@@ -621,16 +545,14 @@ function NetworkIntelligence({
         : "Low network risk";
 
   return (
-    <section
-      className="card network-card"
-      id="network-section"
-    >
+    <section className="card network-card">
       <div className="card-header">
         <div>
           <h2>Network Intelligence</h2>
 
           <p>
-            Current network-level risk signals
+            Connected entities and shared
+            infrastructure
           </p>
         </div>
 
@@ -674,112 +596,574 @@ function NetworkIntelligence({
         </div>
       </div>
 
-      <div className="network-list">
+      {networkLoading ? (
+        <div className="chart-loading">
+          Loading network intelligence...
+        </div>
+      ) : networkError ? (
+        <div className="chart-loading">
+          {networkError}
+        </div>
+      ) : (
+        <>
+          <div className="network-list">
+            <div className="network-item">
+              <div className="network-icon purple">
+                <Activity size={17} />
+              </div>
 
-        <div className="network-item">
-          <div className="network-icon purple">
-            <Activity size={17} />
+              <div className="network-label">
+                <strong>Network Risk</strong>
+
+                <span>
+                  {networkRiskLabel}
+                </span>
+              </div>
+
+              <strong className="network-number">
+                {Math.round(networkRisk * 100)}
+                /100
+              </strong>
+            </div>
+
+            <div className="network-item">
+              <div className="network-icon orange">
+                <Smartphone size={17} />
+              </div>
+
+              <div className="network-label">
+                <strong>
+                  Suspicious Devices
+                </strong>
+
+                <span>
+                  Devices shared across customers
+                </span>
+              </div>
+
+              <strong className="network-number">
+                {(
+                  networkOverview?.suspicious_devices ??
+                  0
+                ).toLocaleString()}
+              </strong>
+            </div>
+
+            <div className="network-item">
+              <div className="network-icon orange">
+                <Globe size={17} />
+              </div>
+
+              <div className="network-label">
+                <strong>
+                  Suspicious IPs
+                </strong>
+
+                <span>
+                  IPs shared across customers
+                </span>
+              </div>
+
+              <strong className="network-number">
+                {(
+                  networkOverview?.suspicious_ips ??
+                  0
+                ).toLocaleString()}
+              </strong>
+            </div>
+
+            <div className="network-item">
+              <div className="network-icon red">
+                <AlertTriangle size={17} />
+              </div>
+
+              <div className="network-label">
+                <strong>
+                  Connected Fraud
+                </strong>
+
+                <span>
+                  Fraud linked to shared infrastructure
+                </span>
+              </div>
+
+              <strong className="network-number">
+                {(
+                  networkOverview?.connected_fraud_transactions ??
+                  0
+                ).toLocaleString()}
+              </strong>
+            </div>
           </div>
 
-          <div className="network-label">
-            <strong>Fraud Spike</strong>
+          <div className="network-summary-note">
+            <Network size={15} />
 
-            <span>
-              Recent fraud activity
+            <span className="network-description">
+              Shared devices and IP addresses can reveal
+              coordinated or connected fraudulent activity
+              across customers.
             </span>
           </div>
 
-          <span
-            className={`network-status ${
-              dashboardData.fraud_spike
-                ? "warning"
-                : "safe"
-            }`}
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() =>
+              onNavigate("network")
+            }
           >
-            {dashboardData.fraud_spike
-              ? "Detected"
-              : "No Spike"}
-          </span>
-        </div>
-
-        <div className="network-item">
-          <div className="network-icon purple">
-            <GitBranch size={17} />
-          </div>
-
-          <div className="network-label">
-            <strong>Abuse Network</strong>
-
-            <span>
-              Candidate network detection
-            </span>
-          </div>
-
-          <span
-            className={`network-status ${
-              dashboardData.abuse_ring_detected
-                ? "warning"
-                : "safe"
-            }`}
-          >
-            {dashboardData.abuse_ring_detected
-              ? "Detected"
-              : "None"}
-          </span>
-        </div>
-
-        <div className="network-item">
-          <div className="network-icon blue">
-            <Users size={17} />
-          </div>
-
-          <div className="network-label">
-            <strong>Network Risk</strong>
-
-            <span>
-              {networkRiskLabel}
-            </span>
-          </div>
-
-          <strong className="network-number">
-            {Math.round(networkRisk * 100)}
-          </strong>
-        </div>
-
-        <div className="network-item">
-          <div className="network-icon blue">
-            <Network size={17} />
-          </div>
-
-          <div className="network-label">
-            <strong>Network Status</strong>
-
-            <span>
-              Aggregated intelligence
-            </span>
-          </div>
-
-          <strong className="network-number">
-            Active
-          </strong>
-        </div>
-
-      </div>
-
-      <button
-        type="button"
-        className="primary-button"
-        onClick={() =>
-          onNavigate("network")
-        }
-      >
-        <Network size={16} />
-        View Network Intelligence
-      </button>
+            <Network size={16} />
+            View Network Intelligence
+          </button>
+        </>
+      )}
     </section>
   );
 }
 
+// =========================================================
+// Network Intelligence Workspace
+// =========================================================
+
+function NetworkIntelligencePage({
+  networkOverview,
+  suspiciousDevices,
+  suspiciousIPs,
+  networkLoading,
+  networkError,
+  dashboardData,
+  onBack,
+}) {
+  const networkRisk =
+    dashboardData?.network_risk_score ?? 0;
+
+  const networkRiskLabel =
+    networkRisk >= 0.7
+      ? "High"
+      : networkRisk >= 0.4
+        ? "Medium"
+        : "Low";
+
+  if (networkLoading) {
+    return (
+      <div className="dashboard-content">
+        <div className="card">
+          <div className="chart-loading">
+            Loading network intelligence...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (networkError) {
+    return (
+      <div className="dashboard-content">
+        <div className="card network-error-card">
+          <div className="chart-loading">
+            {networkError}
+          </div>
+
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={onBack}
+          >
+            <ArrowLeft size={15} />
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="dashboard-content">
+      {/* PAGE HEADER */}
+
+      <div className="network-workspace-header">
+        <div>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={onBack}
+          >
+            <ArrowLeft size={15} />
+            Back to Dashboard
+          </button>
+        </div>
+
+        <div className="network-workspace-intro">
+          <div className="section-header-icon blue">
+            <Network size={20} />
+          </div>
+
+          <div>
+            <h2>Network Intelligence</h2>
+
+            <p>
+              Investigate connected customers,
+              devices, IP addresses and fraud
+              relationships.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* NETWORK OVERVIEW */}
+
+      <div className="stat-grid">
+        <StatCard
+          icon={<Users size={21} />}
+          title="Customers"
+          value={(
+            networkOverview?.customers ?? 0
+          ).toLocaleString()}
+          description="Customers observed"
+          variant="purple"
+        />
+
+        <StatCard
+          icon={<Smartphone size={21} />}
+          title="Devices"
+          value={(
+            networkOverview?.devices ?? 0
+          ).toLocaleString()}
+          description="Unique devices"
+          variant="blue"
+        />
+
+        <StatCard
+          icon={<Globe size={21} />}
+          title="IP Addresses"
+          value={(
+            networkOverview?.ips ?? 0
+          ).toLocaleString()}
+          description="Unique IP addresses"
+          variant="blue"
+        />
+
+        <StatCard
+          icon={<AlertTriangle size={21} />}
+          title="Connected Fraud"
+          value={(
+            networkOverview?.connected_fraud_transactions ??
+            0
+          ).toLocaleString()}
+          description="Fraud linked to infrastructure"
+          variant="red"
+        />
+      </div>
+
+      {/* NETWORK RISK */}
+
+      <section className="card">
+        <div className="card-header">
+          <div>
+            <h2>Network Risk Overview</h2>
+
+            <p>
+              Aggregated risk from connected
+              infrastructure
+            </p>
+          </div>
+
+          <div className="section-header-icon purple">
+            <Activity size={18} />
+          </div>
+        </div>
+
+        <div className="network-list">
+          <div className="network-item">
+            <div className="network-icon purple">
+              <Activity size={17} />
+            </div>
+
+            <div className="network-label">
+              <strong>
+                Overall Network Risk
+              </strong>
+
+              <span>
+                Current aggregated network risk
+                score
+              </span>
+            </div>
+
+            <strong className="network-number">
+              {Math.round(networkRisk * 100)}
+              /100
+            </strong>
+          </div>
+
+          <div className="network-item">
+            <div className="network-icon orange">
+              <Smartphone size={17} />
+            </div>
+
+            <div className="network-label">
+              <strong>
+                Suspicious Devices
+              </strong>
+
+              <span>
+                Shared across multiple customers
+              </span>
+            </div>
+
+            <strong className="network-number">
+              {(
+                networkOverview?.suspicious_devices ??
+                0
+              ).toLocaleString()}
+            </strong>
+          </div>
+
+          <div className="network-item">
+            <div className="network-icon orange">
+              <Globe size={17} />
+            </div>
+
+            <div className="network-label">
+              <strong>
+                Suspicious IP Addresses
+              </strong>
+
+              <span>
+                Shared across multiple customers
+              </span>
+            </div>
+
+            <strong className="network-number">
+              {(
+                networkOverview?.suspicious_ips ??
+                0
+              ).toLocaleString()}
+            </strong>
+          </div>
+
+          <div className="network-item">
+            <div className="network-icon red">
+              <AlertTriangle size={17} />
+            </div>
+
+            <div className="network-label">
+              <strong>
+                Connected Fraud Transactions
+              </strong>
+
+              <span>
+                Fraud associated with shared
+                infrastructure
+              </span>
+            </div>
+
+            <strong className="network-number">
+              {(
+                networkOverview?.connected_fraud_transactions ??
+                0
+              ).toLocaleString()}
+            </strong>
+          </div>
+        </div>
+
+        <div className="network-summary-note">
+          <ShieldCheck size={16} />
+
+          <span>
+            Network risk currently evaluates as{" "}
+            <strong>
+              {networkRiskLabel} risk
+            </strong>
+            . Shared infrastructure provides
+            additional context beyond individual
+            transaction-level signals.
+          </span>
+        </div>
+      </section>
+
+      {/* SUSPICIOUS DEVICES */}
+
+      <section className="card">
+        <div className="card-header">
+          <div>
+            <h2>Suspicious Devices</h2>
+
+            <p>
+              Devices associated with multiple
+              customers and elevated fraud activity
+            </p>
+          </div>
+
+          <div className="section-header-icon orange">
+            <Smartphone size={18} />
+          </div>
+        </div>
+
+        <div className="transaction-table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>DEVICE</th>
+                <th>CUSTOMERS</th>
+                <th>TRANSACTIONS</th>
+                <th>FRAUD</th>
+                <th>FRAUD RATE</th>
+                <th>MAX RISK</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {suspiciousDevices.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan="6"
+                    className="time"
+                  >
+                    No suspicious devices detected.
+                  </td>
+                </tr>
+              ) : (
+                suspiciousDevices.map(
+                  (device) => (
+                    <tr
+                      key={device.device_id}
+                      className="transaction-row"
+                    >
+                      <td>
+                        <div className="transaction-id">
+                          <span className="risk-dot red" />
+
+                          {device.device_id}
+                        </div>
+                      </td>
+
+                      <td>{device.customers}</td>
+
+                      <td>{device.transactions}</td>
+
+                      <td>
+                        <span className="score red">
+                          {device.fraudulent}
+                        </span>
+                      </td>
+
+                      <td>
+                        {Number(
+                          device.fraud_rate
+                        ).toFixed(2)}
+                        %
+                      </td>
+
+                      <td>
+                        <span className="score red">
+                          {Number(
+                            device.max_risk_score
+                          ).toFixed(2)}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                )
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* SUSPICIOUS IPS */}
+
+      <section className="card">
+        <div className="card-header">
+          <div>
+            <h2>Suspicious IP Addresses</h2>
+
+            <p>
+              IP addresses shared across customers
+              with elevated fraud activity
+            </p>
+          </div>
+
+          <div className="section-header-icon orange">
+            <Globe size={18} />
+          </div>
+        </div>
+
+        <div className="transaction-table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>IP ADDRESS</th>
+                <th>CUSTOMERS</th>
+                <th>TRANSACTIONS</th>
+                <th>FRAUD</th>
+                <th>FRAUD RATE</th>
+                <th>MAX RISK</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {suspiciousIPs.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan="6"
+                    className="time"
+                  >
+                    No suspicious IP addresses
+                    detected.
+                  </td>
+                </tr>
+              ) : (
+                suspiciousIPs.map(
+                  (ip) => (
+                    <tr
+                      key={ip.ip_address}
+                      className="transaction-row"
+                    >
+                      <td>
+                        <div className="transaction-id">
+                          <span className="risk-dot red" />
+
+                          {ip.ip_address}
+                        </div>
+                      </td>
+
+                      <td>{ip.customers}</td>
+
+                      <td>{ip.transactions}</td>
+
+                      <td>
+                        <span className="score red">
+                          {ip.fraudulent}
+                        </span>
+                      </td>
+
+                      <td>
+                        {Number(
+                          ip.fraud_rate
+                        ).toFixed(2)}
+                        %
+                      </td>
+
+                      <td>
+                        <span className="score red">
+                          {Number(
+                            ip.max_risk_score
+                          ).toFixed(2)}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                )
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
 
 // =========================================================
 // Risk Distribution
@@ -821,7 +1205,6 @@ function RiskDistribution({
       </div>
 
       <div className="distribution">
-
         <div className="donut">
           <div className="donut-center">
             <strong>
@@ -833,7 +1216,6 @@ function RiskDistribution({
         </div>
 
         <div className="legend">
-
           <div className="legend-item">
             <span className="legend-dot green" />
 
@@ -859,13 +1241,11 @@ function RiskDistribution({
               </span>
             </div>
           </div>
-
         </div>
       </div>
     </section>
   );
 }
-
 
 // =========================================================
 // Investigation Panel
@@ -887,7 +1267,6 @@ function InvestigationPanel({
   return (
     <div className="investigation-overlay">
       <div className="investigation-panel">
-
         <div className="investigation-header">
           <div>
             <span className="investigation-eyebrow">
@@ -935,11 +1314,7 @@ function InvestigationPanel({
           !loading &&
           !error && (
             <div className="investigation-content">
-
-              {/* Risk summary */}
-
               <div className="investigation-risk-card">
-
                 <div>
                   <span className="investigation-label">
                     RULE RISK SCORE
@@ -969,14 +1344,11 @@ function InvestigationPanel({
                       .toUpperCase()}
                   </strong>
                 </div>
-
               </div>
-
 
               {/* Live ML Decision */}
 
               <div className="investigation-section">
-
                 <div className="investigation-section-title">
                   <ShieldCheck size={16} />
                   Live ML Decision
@@ -1009,62 +1381,97 @@ function InvestigationPanel({
                 {mlScore &&
                   !mlLoading &&
                   !mlError && (
-                    <div className="ml-decision-card">
+                    <>
+                      <div className="ml-decision-card">
+                        <div className="ml-metric">
+                          <span>
+                            ML FRAUD PROBABILITY
+                          </span>
 
-                      <div className="ml-metric">
-                        <span>
-                          ML FRAUD PROBABILITY
-                        </span>
+                          <strong>
+                            {(
+                              mlScore.fraud_probability *
+                              100
+                            ).toFixed(1)}
+                            %
+                          </strong>
+                        </div>
 
-                        <strong>
-                          {(
-                            mlScore.fraud_probability *
-                            100
-                          ).toFixed(1)}
-                          %
-                        </strong>
+                        <div className="ml-metric">
+                          <span>
+                            COMBINED RISK SCORE
+                          </span>
+
+                          <strong>
+                            {Number(
+                              mlScore.risk_score
+                            ).toFixed(3)}
+                          </strong>
+                        </div>
+
+                        <div className="ml-decision">
+                          <span>
+                            POLICY DECISION
+                          </span>
+
+                          <strong
+                            className={`policy-decision ${mlScore.decision.toLowerCase()}`}
+                          >
+                            {mlScore.decision}
+                          </strong>
+                        </div>
                       </div>
 
-                      <div className="ml-metric">
-                        <span>
-                          COMBINED RISK SCORE
-                        </span>
+                      {/* ML Explainability */}
 
-                        <strong>
-                          {Number(
-                            mlScore.risk_score
-                          ).toFixed(3)}
-                        </strong>
-                      </div>
+                      {Array.isArray(
+                        mlScore.reasons
+                      ) &&
+                        mlScore.reasons.length >
+                          0 && (
+                          <div className="ml-risk-reasons">
+                            <div className="ml-risk-reasons-header">
+                              <AlertTriangle size={15} />
 
-                      <div className="ml-decision">
-                        <span>
-                          POLICY DECISION
-                        </span>
+                              <span>
+                                WHY THIS DECISION
+                              </span>
+                            </div>
 
-                        <strong
-                          className={`policy-decision ${mlScore.decision.toLowerCase()}`}
-                        >
-                          {mlScore.decision}
-                        </strong>
-                      </div>
+                            <div className="ml-risk-reasons-list">
+                              {mlScore.reasons.map(
+                                (
+                                  reason,
+                                  index
+                                ) => (
+                                  <div
+                                    className="ml-risk-reason"
+                                    key={`${reason}-${index}`}
+                                  >
+                                    <span className="risk-reason-dot" />
 
-                    </div>
+                                    <span>
+                                      {reason}
+                                    </span>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )}
+                    </>
                   )}
               </div>
-
 
               {/* Transaction Details */}
 
               <div className="investigation-section">
-
                 <div className="investigation-section-title">
                   <CreditCard size={16} />
                   Transaction Details
                 </div>
 
                 <div className="investigation-detail-grid">
-
                   <div className="investigation-detail">
                     <span>Amount</span>
 
@@ -1120,15 +1527,12 @@ function InvestigationPanel({
                       )}
                     </strong>
                   </div>
-
                 </div>
               </div>
-
 
               {/* Risk Signals */}
 
               <div className="investigation-section">
-
                 <div className="investigation-section-title">
                   <AlertTriangle size={16} />
                   Risk Signals
@@ -1137,7 +1541,6 @@ function InvestigationPanel({
                 {transaction.risk_reasons?.length >
                 0 ? (
                   <div className="risk-reason-list">
-
                     {transaction.risk_reasons.map(
                       (reason, index) => (
                         <div
@@ -1152,7 +1555,6 @@ function InvestigationPanel({
                         </div>
                       )
                     )}
-
                   </div>
                 ) : (
                   <div className="no-risk-signals">
@@ -1162,18 +1564,15 @@ function InvestigationPanel({
                 )}
               </div>
 
-
               {/* Behavioral Signals */}
 
               <div className="investigation-section">
-
                 <div className="investigation-section-title">
                   <Activity size={16} />
                   Behavioral Signals
                 </div>
 
                 <div className="signal-grid">
-
                   <div className="signal-card">
                     <Clock3 size={15} />
 
@@ -1182,7 +1581,9 @@ function InvestigationPanel({
                     </span>
 
                     <strong>
-                      {transaction.customer_velocity_5m}
+                      {
+                        transaction.customer_velocity_5m
+                      }
                     </strong>
                   </div>
 
@@ -1194,7 +1595,9 @@ function InvestigationPanel({
                     </span>
 
                     <strong>
-                      {transaction.customer_velocity_1h}
+                      {
+                        transaction.customer_velocity_1h
+                      }
                     </strong>
                   </div>
 
@@ -1261,10 +1664,8 @@ function InvestigationPanel({
                         : "No"}
                     </strong>
                   </div>
-
                 </div>
               </div>
-
 
               <div className="investigation-note">
                 <ShieldCheck size={17} />
@@ -1282,15 +1683,12 @@ function InvestigationPanel({
                   </span>
                 </div>
               </div>
-
             </div>
           )}
-
       </div>
     </div>
   );
 }
-
 
 // =========================================================
 // Recent Transactions
@@ -1312,7 +1710,6 @@ function RecentTransactions({
       id="transactions-section"
     >
       <div className="card-header">
-
         <div>
           <h2>Recent Transactions</h2>
 
@@ -1333,12 +1730,10 @@ function RecentTransactions({
         >
           {showAll ? "Show Less" : "View All"}
         </button>
-
       </div>
 
       <div className="transaction-table-wrapper">
         <table>
-
           <thead>
             <tr>
               <th>TRANSACTION ID</th>
@@ -1351,7 +1746,6 @@ function RecentTransactions({
           </thead>
 
           <tbody>
-
             {visibleTransactions.length === 0 ? (
               <tr>
                 <td
@@ -1383,10 +1777,8 @@ function RecentTransactions({
                         )
                       }
                     >
-
                       <td>
                         <div className="transaction-id">
-
                           <span
                             className={`risk-dot ${risk}`}
                           />
@@ -1394,7 +1786,6 @@ function RecentTransactions({
                           {
                             transaction.transaction_id
                           }
-
                         </div>
                       </td>
 
@@ -1436,20 +1827,17 @@ function RecentTransactions({
                           minute: "2-digit",
                         })}
                       </td>
-
                     </tr>
                   );
                 }
               )
             )}
-
           </tbody>
         </table>
       </div>
     </section>
   );
 }
-
 
 // =========================================================
 // Rules & Policies
@@ -1462,7 +1850,6 @@ function PoliciesSection() {
       id="policies-section"
     >
       <div className="card-header">
-
         <div>
           <h2>Rules & Policies</h2>
 
@@ -1475,11 +1862,9 @@ function PoliciesSection() {
         <div className="section-header-icon purple">
           <Shield size={18} />
         </div>
-
       </div>
 
       <div className="network-list">
-
         <div className="network-item">
           <div className="network-icon purple">
             <AlertTriangle size={17} />
@@ -1500,7 +1885,6 @@ function PoliciesSection() {
           </span>
         </div>
 
-
         <div className="network-item">
           <div className="network-icon blue">
             <ShieldCheck size={17} />
@@ -1519,7 +1903,6 @@ function PoliciesSection() {
             Active
           </span>
         </div>
-
 
         <div className="network-item">
           <div className="network-icon red">
@@ -1540,7 +1923,6 @@ function PoliciesSection() {
           </span>
         </div>
 
-
         <div className="network-item">
           <div className="network-icon orange">
             <Search size={17} />
@@ -1560,7 +1942,6 @@ function PoliciesSection() {
           </span>
         </div>
 
-
         <div className="network-item">
           <div className="network-icon green">
             <CheckCircle2 size={17} />
@@ -1579,12 +1960,10 @@ function PoliciesSection() {
             Auto
           </span>
         </div>
-
       </div>
     </section>
   );
 }
-
 
 // =========================================================
 // Alerts
@@ -1600,7 +1979,6 @@ function AlertsSection({
       id="alerts-section"
     >
       <div className="card-header">
-
         <div>
           <h2>Risk Alerts</h2>
 
@@ -1613,11 +1991,9 @@ function AlertsSection({
         <div className="section-header-icon orange">
           <Bell size={18} />
         </div>
-
       </div>
 
       <div className="network-list">
-
         <div className="network-item">
           <div className="network-icon red">
             <GitBranch size={17} />
@@ -1646,7 +2022,6 @@ function AlertsSection({
               : "Clear"}
           </span>
         </div>
-
 
         <div className="network-item">
           <div className="network-icon orange">
@@ -1677,7 +2052,6 @@ function AlertsSection({
           </span>
         </div>
 
-
         <div className="network-item">
           <div className="network-icon purple">
             <Search size={17} />
@@ -1704,12 +2078,10 @@ function AlertsSection({
             Review
           </button>
         </div>
-
       </div>
     </section>
   );
 }
-
 
 // =========================================================
 // Reports
@@ -1724,7 +2096,6 @@ function ReportsSection({
       id="reports-section"
     >
       <div className="card-header">
-
         <div>
           <h2>Risk Reports</h2>
 
@@ -1736,11 +2107,9 @@ function ReportsSection({
         <div className="section-header-icon blue">
           <BarChart3 size={18} />
         </div>
-
       </div>
 
       <div className="network-list">
-
         <div className="network-item">
           <div className="network-icon purple">
             <CreditCard size={17} />
@@ -1761,7 +2130,6 @@ function ReportsSection({
             {dashboardData.total_transactions.toLocaleString()}
           </strong>
         </div>
-
 
         <div className="network-item">
           <div className="network-icon red">
@@ -1784,7 +2152,6 @@ function ReportsSection({
           </strong>
         </div>
 
-
         <div className="network-item">
           <div className="network-icon orange">
             <Activity size={17} />
@@ -1805,7 +2172,6 @@ function ReportsSection({
             {(dashboardData.fraud_rate * 100).toFixed(2)}%
           </strong>
         </div>
-
 
         <div className="network-item">
           <div className="network-icon blue">
@@ -1830,12 +2196,10 @@ function ReportsSection({
             /100
           </strong>
         </div>
-
       </div>
     </section>
   );
 }
-
 
 // =========================================================
 // Settings
@@ -1848,7 +2212,6 @@ function SettingsSection() {
       id="settings-section"
     >
       <div className="card-header">
-
         <div>
           <h2>System Status</h2>
 
@@ -1861,11 +2224,9 @@ function SettingsSection() {
         <div className="section-header-icon blue">
           <Settings size={18} />
         </div>
-
       </div>
 
       <div className="network-list">
-
         <div className="network-item">
           <div className="network-icon green">
             <CheckCircle2 size={17} />
@@ -1883,7 +2244,6 @@ function SettingsSection() {
             Connected
           </span>
         </div>
-
 
         <div className="network-item">
           <div className="network-icon green">
@@ -1903,7 +2263,6 @@ function SettingsSection() {
           </span>
         </div>
 
-
         <div className="network-item">
           <div className="network-icon blue">
             <Network size={17} />
@@ -1921,7 +2280,6 @@ function SettingsSection() {
             Enabled
           </span>
         </div>
-
 
         <div className="network-item">
           <div className="network-icon purple">
@@ -1944,7 +2302,6 @@ function SettingsSection() {
           </span>
         </div>
 
-
         <div className="network-item">
           <div className="network-icon orange">
             <Shield size={17} />
@@ -1962,12 +2319,10 @@ function SettingsSection() {
             Enabled
           </span>
         </div>
-
       </div>
     </section>
   );
 }
-
 
 // =========================================================
 // Risk Insights
@@ -1983,7 +2338,6 @@ function RiskInsights({
       id="insights-section"
     >
       <div className="insight-heading">
-
         <div className="insight-icon">
           <ShieldCheck size={21} />
         </div>
@@ -1996,12 +2350,9 @@ function RiskInsights({
             attention
           </p>
         </div>
-
       </div>
 
-
       <div className="insight-items">
-
         <div className="insight-item">
           <span className="insight-marker red" />
 
@@ -2025,7 +2376,6 @@ function RiskInsights({
             View
           </button>
         </div>
-
 
         <div className="insight-item">
           <span className="insight-marker orange" />
@@ -2051,7 +2401,6 @@ function RiskInsights({
           </button>
         </div>
 
-
         <div className="insight-item">
           <span className="insight-marker purple" />
 
@@ -2076,12 +2425,10 @@ function RiskInsights({
             View
           </button>
         </div>
-
       </div>
     </section>
   );
 }
-
 
 // =========================================================
 // Dashboard
@@ -2124,15 +2471,46 @@ function Dashboard() {
   const [dateRange, setDateRange] =
     useState("Aug 28 – Sep 4, 2026");
 
+  // =======================================================
+  // Fraud trend state
+  // =======================================================
+
   const [trendRange, setTrendRange] =
     useState("7 Days");
 
   const [trendMenuOpen, setTrendMenuOpen] =
     useState(false);
 
+  const [trendData, setTrendData] =
+    useState([]);
+
+  const [trendLoading, setTrendLoading] =
+    useState(false);
+
+  const [trendError, setTrendError] =
+    useState("");
+
   const [showAllTransactions, setShowAllTransactions] =
     useState(false);
 
+  // =======================================================
+  // Network intelligence state
+  // =======================================================
+
+  const [networkOverview, setNetworkOverview] =
+    useState(null);
+
+  const [suspiciousDevices, setSuspiciousDevices] =
+    useState([]);
+
+  const [suspiciousIPs, setSuspiciousIPs] =
+    useState([]);
+
+  const [networkLoading, setNetworkLoading] =
+    useState(false);
+
+  const [networkError, setNetworkError] =
+    useState("");
 
   // =======================================================
   // Refs
@@ -2140,7 +2518,6 @@ function Dashboard() {
 
   const dashboardRef = useRef(null);
   const transactionsRef = useRef(null);
-  const networkRef = useRef(null);
   const policiesRef = useRef(null);
   const alertsRef = useRef(null);
   const reportsRef = useRef(null);
@@ -2148,6 +2525,109 @@ function Dashboard() {
 
   const trendDropdownRef = useRef(null);
 
+  // =======================================================
+  // Load fraud trend
+  // =======================================================
+
+  useEffect(() => {
+    const loadFraudTrend = async () => {
+      setTrendLoading(true);
+      setTrendError("");
+
+      try {
+        const days =
+          trendRange === "7 Days"
+            ? 7
+            : trendRange === "14 Days"
+              ? 14
+              : 30;
+
+        const response =
+          await getFraudTrend(days);
+
+        const formattedData =
+          response.data.map((item) => ({
+            day: new Date(
+              `${item.date}T00:00:00`
+            ).toLocaleDateString(
+              "en-US",
+              {
+                month: "short",
+                day: "numeric",
+              }
+            ),
+            rate: item.fraud_rate,
+          }));
+
+        setTrendData(formattedData);
+      } catch (error) {
+        console.error(
+          "Failed to load fraud trend:",
+          error
+        );
+
+        setTrendError(
+          "Unable to load fraud trend."
+        );
+
+        setTrendData([]);
+      } finally {
+        setTrendLoading(false);
+      }
+    };
+
+    loadFraudTrend();
+  }, [trendRange]);
+
+  // =======================================================
+  // Load network intelligence
+  // =======================================================
+
+  useEffect(() => {
+    const loadNetworkIntelligence = async () => {
+      setNetworkLoading(true);
+      setNetworkError("");
+
+      try {
+        const [
+          overview,
+          devices,
+          ips,
+        ] = await Promise.all([
+          getNetworkOverview(),
+          getSuspiciousDevices(10),
+          getSuspiciousIPs(10),
+        ]);
+
+        setNetworkOverview(overview);
+
+        setSuspiciousDevices(
+          devices.data || []
+        );
+
+        setSuspiciousIPs(
+          ips.data || []
+        );
+      } catch (error) {
+        console.error(
+          "Failed to load network intelligence:",
+          error
+        );
+
+        setNetworkError(
+          "Unable to load network intelligence."
+        );
+
+        setNetworkOverview(null);
+        setSuspiciousDevices([]);
+        setSuspiciousIPs([]);
+      } finally {
+        setNetworkLoading(false);
+      }
+    };
+
+    loadNetworkIntelligence();
+  }, []);
 
   // =======================================================
   // Close trend dropdown on outside click
@@ -2178,7 +2658,6 @@ function Dashboard() {
     };
   }, []);
 
-
   // =======================================================
   // Navigation
   // =======================================================
@@ -2186,16 +2665,32 @@ function Dashboard() {
   const sectionRefs = {
     dashboard: dashboardRef,
     transactions: transactionsRef,
-    investigation: transactionsRef,
-    network: networkRef,
     policies: policiesRef,
     alerts: alertsRef,
     reports: reportsRef,
     settings: settingsRef,
   };
 
-
   const scrollToSection = (section) => {
+    // Network is now a dedicated workspace.
+
+    if (section === "network") {
+      setActiveSection("network");
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+
+      return;
+    }
+
+    // Investigation is opened by selecting a transaction.
+
+    if (section === "investigation") {
+      return;
+    }
+
     setActiveSection(section);
 
     const targetRef =
@@ -2209,30 +2704,20 @@ function Dashboard() {
       behavior: "smooth",
       block: "start",
     });
-
-    if (
-      section === "investigation" &&
-      recentTransactions.length > 0
-    ) {
-      const firstTransaction =
-        recentTransactions[0];
-
-      handleSelectTransaction(
-        firstTransaction.transaction_id
-      );
-    }
   };
-
 
   // =======================================================
   // Update active navigation
   // =======================================================
 
   useEffect(() => {
+    if (activeSection === "network") {
+      return;
+    }
+
     const sections = [
       ["dashboard", dashboardRef],
       ["transactions", transactionsRef],
-      ["network", networkRef],
       ["policies", policiesRef],
       ["alerts", alertsRef],
       ["reports", reportsRef],
@@ -2277,7 +2762,11 @@ function Dashboard() {
           root: null,
           rootMargin:
             "-18% 0px -65% 0px",
-          threshold: [0.1, 0.25, 0.5],
+          threshold: [
+            0.1,
+            0.25,
+            0.5,
+          ],
         }
       );
 
@@ -2290,8 +2779,7 @@ function Dashboard() {
     return () => {
       observer.disconnect();
     };
-  }, []);
-
+  }, [activeSection]);
 
   // =======================================================
   // Load dashboard
@@ -2322,7 +2810,6 @@ function Dashboard() {
             })
           )
         );
-
       } catch (err) {
         console.error(
           "Failed to load dashboard:",
@@ -2339,7 +2826,6 @@ function Dashboard() {
 
     loadDashboard();
   }, []);
-
 
   // =======================================================
   // Transaction investigation + ML
@@ -2376,7 +2862,6 @@ function Dashboard() {
       );
 
       setMlScore(score);
-
     } catch (err) {
       console.error(
         "Failed to load transaction intelligence:",
@@ -2389,13 +2874,11 @@ function Dashboard() {
 
       setInvestigationError(message);
       setMlError(message);
-
     } finally {
       setInvestigationLoading(false);
       setMlLoading(false);
     }
   };
-
 
   // =======================================================
   // Close investigation
@@ -2413,7 +2896,6 @@ function Dashboard() {
     setActiveSection("transactions");
   };
 
-
   // =======================================================
   // Loading
   // =======================================================
@@ -2425,7 +2907,6 @@ function Dashboard() {
       </div>
     );
   }
-
 
   // =======================================================
   // Error
@@ -2440,389 +2921,418 @@ function Dashboard() {
     );
   }
 
-
   // =======================================================
   // UI
   // =======================================================
 
+  const showingNetworkWorkspace =
+    activeSection === "network";
+
   return (
     <div className="app-shell">
-
       <Sidebar
         activeSection={activeSection}
         onNavigate={scrollToSection}
       />
 
-
       <main className="main-content">
-
         <Header
           onNavigate={scrollToSection}
           dateRange={dateRange}
           setDateRange={setDateRange}
+          activeSection={activeSection}
         />
 
+        {showingNetworkWorkspace ? (
+          <NetworkIntelligencePage
+            networkOverview={
+              networkOverview
+            }
+            suspiciousDevices={
+              suspiciousDevices
+            }
+            suspiciousIPs={
+              suspiciousIPs
+            }
+            networkLoading={
+              networkLoading
+            }
+            networkError={
+              networkError
+            }
+            dashboardData={
+              dashboardData
+            }
+            onBack={() =>
+              scrollToSection("dashboard")
+            }
+          />
+        ) : (
+          <div
+            className="dashboard-content"
+            ref={dashboardRef}
+            id="dashboard-section"
+          >
+            {/* =================================================
+                STATS
+            ================================================= */}
 
-        <div
-          className="dashboard-content"
-          ref={dashboardRef}
-          id="dashboard-section"
-        >
+            <div className="stat-grid">
+              <StatCard
+                icon={
+                  <CreditCard size={21} />
+                }
+                title="Total Transactions"
+                value={dashboardData.total_transactions.toLocaleString()}
+                description="Dataset transactions"
+                variant="purple"
+              />
 
-          {/* =================================================
-              STATS
-          ================================================= */}
-
-          <div className="stat-grid">
-
-            <StatCard
-              icon={
-                <CreditCard size={21} />
-              }
-              title="Total Transactions"
-              value={dashboardData.total_transactions.toLocaleString()}
-              description="Dataset transactions"
-              variant="purple"
-            />
-
-            <StatCard
-              icon={
-                <Activity size={21} />
-              }
-              title="Fraud Rate"
-              value={`${(
-                dashboardData.fraud_rate * 100
-              ).toFixed(2)}%`}
-              description={`${dashboardData.fraud_transactions.toLocaleString()} flagged as fraud`}
-              variant="red"
-            />
-
-            <StatCard
-              icon={
-                <Network size={21} />
-              }
-              title="Network Risk Score"
-              value={`${Math.round(
-                dashboardData.network_risk_score *
+              <StatCard
+                icon={
+                  <Activity size={21} />
+                }
+                title="Fraud Rate"
+                value={`${(
+                  dashboardData.fraud_rate *
                   100
-              )} / 100`}
-              description={
-                dashboardData.network_risk_score >=
-                0.7
-                  ? "High network risk"
-                  : dashboardData.network_risk_score >=
-                      0.4
-                    ? "Medium network risk"
-                    : "Low network risk"
-              }
-              variant="blue"
-            />
+                ).toFixed(2)}%`}
+                description={`${dashboardData.fraud_transactions.toLocaleString()} flagged as fraud`}
+                variant="red"
+              />
 
-            <StatCard
-              icon={
-                <BarChart3 size={21} />
-              }
-              title="Transaction Volume"
-              value={`$${(
-                dashboardData.total_amount /
-                1_000_000
-              ).toFixed(2)}M`}
-              description={`Average $${dashboardData.average_transaction_amount.toFixed(
-                2
-              )}`}
-              variant="green"
-            />
+              <StatCard
+                icon={
+                  <Network size={21} />
+                }
+                title="Network Risk Score"
+                value={`${Math.round(
+                  dashboardData.network_risk_score *
+                    100
+                )} / 100`}
+                description={
+                  dashboardData.network_risk_score >=
+                  0.7
+                    ? "High network risk"
+                    : dashboardData.network_risk_score >=
+                        0.4
+                      ? "Medium network risk"
+                      : "Low network risk"
+                }
+                variant="blue"
+              />
 
-            <StatCard
-              icon={
-                <AlertTriangle size={21} />
-              }
-              title="Fraud Transactions"
-              value={dashboardData.fraud_transactions.toLocaleString()}
-              description={`${(
-                dashboardData.fraud_rate * 100
-              ).toFixed(2)}% of transactions`}
-              variant="orange"
-            />
+              <StatCard
+                icon={
+                  <BarChart3 size={21} />
+                }
+                title="Transaction Volume"
+                value={`$${(
+                  dashboardData.total_amount /
+                  1_000_000
+                ).toFixed(2)}M`}
+                description={`Average $${dashboardData.average_transaction_amount.toFixed(
+                  2
+                )}`}
+                variant="green"
+              />
 
-          </div>
+              <StatCard
+                icon={
+                  <AlertTriangle size={21} />
+                }
+                title="Fraud Transactions"
+                value={dashboardData.fraud_transactions.toLocaleString()}
+                description={`${(
+                  dashboardData.fraud_rate *
+                  100
+                ).toFixed(2)}% of transactions`}
+                variant="orange"
+              />
+            </div>
 
+            {/* =================================================
+                MAIN DASHBOARD GRID
+            ================================================= */}
 
-          {/* =================================================
-              MAIN DASHBOARD GRID
-          ================================================= */}
+            <div className="dashboard-grid">
+              {/* Fraud Trend */}
 
-          <div className="dashboard-grid">
+              <section className="card chart-card">
+                <div className="card-header">
+                  <div>
+                    <h2>Fraud Rate Trend</h2>
 
-            {/* Fraud Trend */}
+                    <p>
+                      Recent fraud activity across
+                      the monitoring window
+                    </p>
+                  </div>
 
-            <section className="card chart-card">
+                  <div
+                    className="header-dropdown"
+                    ref={trendDropdownRef}
+                  >
+                    <button
+                      type="button"
+                      className={`secondary-button ${
+                        trendMenuOpen
+                          ? "open"
+                          : ""
+                      }`}
+                      onClick={() =>
+                        setTrendMenuOpen(
+                          (previous) =>
+                            !previous
+                        )
+                      }
+                    >
+                      {trendRange}
 
-              <div className="card-header">
+                      <ChevronDown size={14} />
+                    </button>
 
-                <div>
-                  <h2>Fraud Rate Trend</h2>
+                    {trendMenuOpen && (
+                      <div className="dropdown-menu trend-menu">
+                        <div className="dropdown-heading">
+                          Time window
+                        </div>
 
-                  <p>
-                    Recent fraud activity across
-                    the monitoring window
-                  </p>
+                        {[
+                          "7 Days",
+                          "14 Days",
+                          "30 Days",
+                        ].map((option) => (
+                          <button
+                            type="button"
+                            key={option}
+                            className={
+                              option ===
+                              trendRange
+                                ? "dropdown-selected"
+                                : ""
+                            }
+                            onClick={() => {
+                              setTrendRange(
+                                option
+                              );
+                              setTrendMenuOpen(
+                                false
+                              );
+                            }}
+                          >
+                            <span>
+                              {option}
+                            </span>
+
+                            {option ===
+                              trendRange && (
+                              <CheckCircle2
+                                size={14}
+                              />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-
-                <div
-                  className="header-dropdown"
-                  ref={trendDropdownRef}
-                >
-                  <button
-                    type="button"
-                    className={`secondary-button ${
-                      trendMenuOpen
-                        ? "open"
-                        : ""
-                    }`}
-                    onClick={() =>
-                      setTrendMenuOpen(
-                        (previous) => !previous
-                      )
-                    }
-                  >
-                    {trendRange}
-
-                    <ChevronDown size={14} />
-                  </button>
-
-                  {trendMenuOpen && (
-                    <div className="dropdown-menu trend-menu">
-
-                      <div className="dropdown-heading">
-                        Time window
-                      </div>
-
-                      {Object.keys(
-                        fraudTrendData
-                      ).map((option) => (
-
-                        <button
-                          type="button"
-                          key={option}
-                          className={
-                            option === trendRange
-                              ? "dropdown-selected"
-                              : ""
-                          }
-                          onClick={() => {
-                            setTrendRange(option);
-                            setTrendMenuOpen(false);
-                          }}
-                        >
-                          <span>{option}</span>
-
-                          {option === trendRange && (
-                            <CheckCircle2 size={14} />
-                          )}
-                        </button>
-
-                      ))}
-
+                <div className="chart-container">
+                  {trendLoading ? (
+                    <div className="chart-loading">
+                      Loading fraud trend...
                     </div>
+                  ) : trendError ? (
+                    <div className="chart-loading">
+                      {trendError}
+                    </div>
+                  ) : (
+                    <ResponsiveContainer
+                      width="100%"
+                      height="100%"
+                    >
+                      <AreaChart
+                        data={trendData}
+                      >
+                        <defs>
+                          <linearGradient
+                            id="fraudGradient"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="0%"
+                              stopColor="#6F42C1"
+                              stopOpacity={0.28}
+                            />
+
+                            <stop
+                              offset="100%"
+                              stopColor="#6F42C1"
+                              stopOpacity={0.02}
+                            />
+                          </linearGradient>
+                        </defs>
+
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          vertical={false}
+                          stroke="#E5E7EB"
+                        />
+
+                        <XAxis
+                          dataKey="day"
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{
+                            fill: "#6B7280",
+                            fontSize: 12,
+                          }}
+                        />
+
+                        <YAxis
+                          domain={[0, 5]}
+                          tickFormatter={(value) =>
+                            `${value}%`
+                          }
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{
+                            fill: "#6B7280",
+                            fontSize: 12,
+                          }}
+                        />
+
+                        <Tooltip
+                          formatter={(value) => [
+                            `${value}%`,
+                            "Fraud rate",
+                          ]}
+                        />
+
+                        <Area
+                          type="monotone"
+                          dataKey="rate"
+                          stroke="#6F42C1"
+                          strokeWidth={3}
+                          fill="url(#fraudGradient)"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   )}
                 </div>
+              </section>
 
+              {/* Compact Network Intelligence */}
+
+              <div>
+                <NetworkIntelligenceSummary
+                  dashboardData={
+                    dashboardData
+                  }
+                  networkOverview={
+                    networkOverview
+                  }
+                  networkLoading={
+                    networkLoading
+                  }
+                  networkError={
+                    networkError
+                  }
+                  onNavigate={
+                    scrollToSection
+                  }
+                />
               </div>
 
+              {/* Transactions */}
 
-              <div className="chart-container">
-
-                <ResponsiveContainer
-                  width="100%"
-                  height="100%"
-                >
-                  <AreaChart
-                    data={
-                      fraudTrendData[
-                        trendRange
-                      ]
-                    }
-                  >
-
-                    <defs>
-                      <linearGradient
-                        id="fraudGradient"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="0%"
-                          stopColor="#6F42C1"
-                          stopOpacity={0.28}
-                        />
-
-                        <stop
-                          offset="100%"
-                          stopColor="#6F42C1"
-                          stopOpacity={0.02}
-                        />
-                      </linearGradient>
-                    </defs>
-
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      vertical={false}
-                      stroke="#E5E7EB"
-                    />
-
-                    <XAxis
-                      dataKey="day"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{
-                        fill: "#6B7280",
-                        fontSize: 12,
-                      }}
-                    />
-
-                    <YAxis
-                      domain={[0, 5]}
-                      tickFormatter={(value) =>
-                        `${value}%`
-                      }
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{
-                        fill: "#6B7280",
-                        fontSize: 12,
-                      }}
-                    />
-
-                    <Tooltip
-                      formatter={(value) => [
-                        `${value}%`,
-                        "Fraud rate",
-                      ]}
-                    />
-
-                    <Area
-                      type="monotone"
-                      dataKey="rate"
-                      stroke="#6F42C1"
-                      strokeWidth={3}
-                      fill="url(#fraudGradient)"
-                    />
-
-                  </AreaChart>
-                </ResponsiveContainer>
-
+              <div
+                ref={transactionsRef}
+                id="transactions-section"
+              >
+                <RecentTransactions
+                  transactions={
+                    recentTransactions
+                  }
+                  onSelectTransaction={
+                    handleSelectTransaction
+                  }
+                  showAll={
+                    showAllTransactions
+                  }
+                  setShowAll={
+                    setShowAllTransactions
+                  }
+                />
               </div>
 
-            </section>
+              {/* Distribution */}
 
-
-            {/* Network */}
-
-            <div
-              ref={networkRef}
-              id="network-section"
-            >
-              <NetworkIntelligence
+              <RiskDistribution
                 dashboardData={dashboardData}
-                onNavigate={scrollToSection}
               />
             </div>
 
+            {/* =================================================
+                SECONDARY INTELLIGENCE
+            ================================================= */}
 
-            {/* Transactions */}
+            <div className="secondary-sections">
+              <div
+                ref={policiesRef}
+                id="policies-section"
+              >
+                <PoliciesSection />
+              </div>
 
-            <div
-              ref={transactionsRef}
-              id="transactions-section"
-            >
-              <RecentTransactions
-                transactions={
-                  recentTransactions
-                }
-                onSelectTransaction={
-                  handleSelectTransaction
-                }
-                showAll={
-                  showAllTransactions
-                }
-                setShowAll={
-                  setShowAllTransactions
-                }
-              />
+              <div
+                ref={alertsRef}
+                id="alerts-section"
+              >
+                <AlertsSection
+                  dashboardData={
+                    dashboardData
+                  }
+                  onNavigate={
+                    scrollToSection
+                  }
+                />
+              </div>
+
+              <div
+                ref={reportsRef}
+                id="reports-section"
+              >
+                <ReportsSection
+                  dashboardData={
+                    dashboardData
+                  }
+                />
+              </div>
+
+              <div
+                ref={settingsRef}
+                id="settings-section"
+              >
+                <SettingsSection />
+              </div>
             </div>
 
+            {/* =================================================
+                RISK INSIGHTS
+            ================================================= */}
 
-            {/* Distribution */}
-
-            <RiskDistribution
+            <RiskInsights
               dashboardData={dashboardData}
+              onNavigate={scrollToSection}
             />
-
           </div>
-
-
-          {/* =================================================
-              SECONDARY INTELLIGENCE
-          ================================================= */}
-
-          <div className="secondary-sections">
-
-            <div
-              ref={policiesRef}
-              id="policies-section"
-            >
-              <PoliciesSection />
-            </div>
-
-
-            <div
-              ref={alertsRef}
-              id="alerts-section"
-            >
-              <AlertsSection
-                dashboardData={dashboardData}
-                onNavigate={scrollToSection}
-              />
-            </div>
-
-
-            <div
-              ref={reportsRef}
-              id="reports-section"
-            >
-              <ReportsSection
-                dashboardData={dashboardData}
-              />
-            </div>
-
-
-            <div
-              ref={settingsRef}
-              id="settings-section"
-            >
-              <SettingsSection />
-            </div>
-
-          </div>
-
-
-          {/* =================================================
-              RISK INSIGHTS
-          ================================================= */}
-
-          <RiskInsights
-            dashboardData={dashboardData}
-            onNavigate={scrollToSection}
-          />
-
-        </div>
-
+        )}
       </main>
-
 
       {/* =====================================================
           INVESTIGATION OVERLAY
@@ -2845,10 +3355,8 @@ function Dashboard() {
         mlLoading={mlLoading}
         mlError={mlError}
       />
-
     </div>
   );
 }
-
 
 export default Dashboard;

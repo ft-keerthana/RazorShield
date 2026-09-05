@@ -29,3 +29,26 @@ export async function scoreTransaction(transactionId) {
   );
   return response.data;
 }
+
+export async function getFraudTrend(days = 7) {
+  const response = await api.get(`/dashboard/fraud-trend?days=${days}`);
+  return response.data;
+}
+export async function getNetworkOverview() {
+  const response = await api.get("/network/overview");
+  return response.data;
+}
+
+export async function getSuspiciousDevices(limit = 10) {
+  const response = await api.get(
+    `/network/suspicious-devices?limit=${limit}`
+  );
+  return response.data;
+}
+
+export async function getSuspiciousIPs(limit = 10) {
+  const response = await api.get(
+    `/network/suspicious-ips?limit=${limit}`
+  );
+  return response.data;
+}

@@ -163,6 +163,14 @@ button:focus-visible {
   font-size: 9px;
   font-weight: 700;
 }
+.network-error-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.network-error-card .secondary-button {
+ align-self: flex-end;
+}
 
 .system-status {
   margin-top: auto;
@@ -648,6 +656,7 @@ button:focus-visible {
 ========================================================= */
 
 .card {
+  position: relative;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   background: #ffffff;
@@ -1999,4 +2008,80 @@ button:focus-visible {
     left: 12px;
     width: auto;
   }
+}
+
+
+.network-summary-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 16px;
+  padding: 9px 12px;
+  border-radius: 8px;
+}
+
+.network-summary-note svg {
+  flex-shrink: 0;
+}
+
+.network-description {
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+}
+.network-risk-description {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.network-risk-description strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+/* =========================================================
+   ML Explainability
+========================================================= */
+
+.ml-risk-reasons {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 9px;
+  background: #f9fafb;
+}
+
+.ml-risk-reasons-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+}
+
+.ml-risk-reasons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ml-risk-reason {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #4b5563;
 }
