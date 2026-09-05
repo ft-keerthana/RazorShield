@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+
 import {
   getDashboardSummary,
   getRecentTransactions,
@@ -8,6 +9,7 @@ import {
   getNetworkOverview,
   getSuspiciousDevices,
   getSuspiciousIPs,
+  getEvaluationMetrics,
 } from "./services/api";
 
 import {
@@ -756,27 +758,33 @@ function NetworkIntelligencePage({
       </div>
     );
   }
+  <div className="network-workspace-header">
+  <div className="network-workspace-intro">
+    <div className="section-header-icon blue">
+      <Network size={20} />
+    </div>
 
-  if (networkError) {
-    return (
-      <div className="dashboard-content">
-        <div className="card network-error-card">
-          <div className="chart-loading">
-            {networkError}
-          </div>
+    <div>
+      <h2>Network Intelligence</h2>
 
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={onBack}
-          >
-            <ArrowLeft size={15} />
-            Back to Dashboard
-          </button>
-        </div>
-      </div>
-    );
-  }
+      <p>
+        Investigate connected customers,
+        devices, IP addresses and fraud
+        relationships.
+      </p>
+    </div>
+  </div>
+
+  <button
+    type="button"
+    className="secondary-button"
+    onClick={onBack}
+  >
+    <ArrowLeft size={15} />
+    Back to Dashboard
+  </button>
+</div>
+
 
   return (
     <div className="dashboard-content">
@@ -2513,6 +2521,19 @@ function Dashboard() {
     useState("");
 
   // =======================================================
+  // Evaluation metrics state
+  // =======================================================
+
+  const [evaluationMetrics, setEvaluationMetrics] =
+    useState(null);
+
+  const [evaluationLoading, setEvaluationLoading] =
+    useState(false);
+
+  const [evaluationError, setEvaluationError] =
+    useState("");
+
+  // =======================================================
   // Refs
   // =======================================================
 
@@ -2630,6 +2651,39 @@ function Dashboard() {
   }, []);
 
   // =======================================================
+  // Load evaluation metrics
+  // =======================================================
+
+  useEffect(() => {
+    const loadEvaluationMetrics = async () => {
+      setEvaluationLoading(true);
+      setEvaluationError("");
+
+      try {
+        const metrics =
+          await getEvaluationMetrics();
+
+        setEvaluationMetrics(metrics);
+      } catch (error) {
+        console.error(
+          "Failed to load evaluation metrics:",
+          error
+        );
+
+        setEvaluationError(
+          "Unable to load evaluation metrics."
+        );
+
+        setEvaluationMetrics(null);
+      } finally {
+        setEvaluationLoading(false);
+      }
+    };
+
+    loadEvaluationMetrics();
+  }, []);
+
+  // =======================================================
   // Close trend dropdown on outside click
   // =======================================================
 
@@ -2673,36 +2727,71 @@ function Dashboard() {
 
   const scrollToSection = (section) => {
     // Network is now a dedicated workspace.
+     // Dashboard
+  if (section === "dashboard") {
+    setActiveSection("dashboard");
 
-    if (section === "network") {
-      setActiveSection("network");
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+
+    return;
+  }
+
+  // Network Intelligence is a separate page
+  if (section === "network") {
+    setActiveSection("network");
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+
+    return;
+  }
+
+  // Investigation uses the Transactions area
+  if (section === "investigation") {
+    setActiveSection("transactions");
+
+    if (transactionsRef.current) {
+      const headerOffset = 90;
+
+      const targetPosition =
+        transactionsRef.current.getBoundingClientRect().top +
+        window.scrollY -
+        headerOffset;
 
       window.scrollTo({
-        top: 0,
+        top: Math.max(0, targetPosition),
         behavior: "smooth",
       });
-
-      return;
     }
 
-    // Investigation is opened by selecting a transaction.
+    return;
+  }
 
-    if (section === "investigation") {
-      return;
-    }
+  // All normal dashboard sections
+  setActiveSection(section);
 
-    setActiveSection(section);
+  const targetRef = sectionRefs[section];
 
-    const targetRef =
-      sectionRefs[section];
+  if (!targetRef?.current) {
+    return;
+  }
 
-    if (!targetRef?.current) {
-      return;
-    }
+  const headerOffset = 90;
 
-    targetRef.current.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
+  const targetPosition =
+    targetRef.current.getBoundingClientRect().top +
+    window.scrollY -
+    headerOffset;
+
+  window.scrollTo({
+    top: Math.max(0, targetPosition),
+    behavior: "smooth",
+
     });
   };
 
@@ -2793,7 +2882,7 @@ function Dashboard() {
           transactions,
         ] = await Promise.all([
           getDashboardSummary(),
-          getRecentTransactions(),
+          getRecentTransactions(1000),
         ]);
 
         setDashboardData(
@@ -3276,6 +3365,132 @@ function Dashboard() {
                 dashboardData={dashboardData}
               />
             </div>
+
+{/* =================================================
+    MODEL PERFORMANCE
+================================================= */}
+
+<section className="card model-performance-card">
+  <div className="card-header">
+    <div>
+      <h2>Model Performance</h2>
+
+      <p>
+        Held-out fraud detection evaluation
+      </p>
+    </div>
+
+    <div className="section-header-icon blue">
+      <BarChart3 size={18} />
+    </div>
+  </div>
+
+  {evaluationLoading ? (
+    <div className="chart-loading">
+      Loading evaluation metrics...
+    </div>
+  ) : evaluationError ? (
+    <div className="chart-loading">
+      {evaluationError}
+    </div>
+  ) : evaluationMetrics ? (
+    <>
+      <div className="model-performance-metrics">
+        <div className="model-metric">
+          <span>PRECISION</span>
+
+          <strong>
+            {(evaluationMetrics.precision * 100).toFixed(1)}%
+          </strong>
+        </div>
+
+        <div className="model-metric">
+          <span>RECALL</span>
+
+          <strong>
+            {(evaluationMetrics.recall * 100).toFixed(1)}%
+          </strong>
+        </div>
+
+        <div className="model-metric">
+          <span>F1 SCORE</span>
+
+          <strong>
+            {(evaluationMetrics.f1 * 100).toFixed(1)}%
+          </strong>
+        </div>
+
+        <div className="model-metric">
+          <span>PR-AUC</span>
+
+          <strong>
+            {Number(
+              evaluationMetrics.average_precision
+            ).toFixed(3)}
+          </strong>
+        </div>
+      </div>
+
+      <div className="model-evaluation-meta">
+        <div>
+          <span>TEST SAMPLES</span>
+
+          <strong>
+            {evaluationMetrics.test_samples.toLocaleString()}
+          </strong>
+        </div>
+
+        <div>
+          <span>FRAUD CASES</span>
+
+          <strong>
+            {evaluationMetrics.fraud_cases}
+          </strong>
+        </div>
+
+        <div>
+          <span>FALSE POSITIVES</span>
+
+          <strong>
+            {evaluationMetrics.false_positives}
+          </strong>
+        </div>
+
+        <div>
+          <span>FALSE NEGATIVES</span>
+
+          <strong>
+            {evaluationMetrics.false_negatives}
+          </strong>
+        </div>
+      </div>
+
+      <div className="model-performance-footer">
+        <div>
+          <span>Evaluation protocol</span>
+
+          <strong>
+            {evaluationMetrics.evaluation_protocol}
+          </strong>
+        </div>
+
+        <div>
+          <span>Decision threshold</span>
+
+          <strong>
+            {Number(
+              evaluationMetrics.threshold
+            ).toFixed(6)}
+          </strong>
+        </div>
+      </div>
+    </>
+  ) : (
+    <div className="chart-loading">
+      Evaluation metrics unavailable.
+    </div>
+  )}
+</section>
 
             {/* =================================================
                 SECONDARY INTELLIGENCE

@@ -1,3 +1,4 @@
+from backend.app.services.evaluation import get_evaluation_metrics
 from pathlib import Path
 
 import joblib
@@ -12,6 +13,12 @@ from backend.app.network.fraud_spike import detect_fraud_spike
 from backend.app.services.dashboard import build_dashboard_summary
 from backend.app.services.investigation import (
     get_transaction_investigation,
+)
+from backend.app.services.fraud_trend import build_fraud_trend
+from backend.app.services.network_intelligence import (
+    build_network_overview,
+    build_suspicious_devices,
+    build_suspicious_ips,
 )
 
 app = FastAPI(
@@ -167,6 +174,97 @@ def fraud_spike_status():
         "spike_ratio": result.spike_ratio,
         "severity": result.severity,
     }
+@app.get("/network/overview", tags=["Network"])
+def network_overview():
+    dataset_path = (
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "transactions_processed.csv"
+    )
+
+    if not dataset_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Processed transaction dataset is not available.",
+        )
+
+    try:
+        transactions = pd.read_csv(dataset_path)
+
+        return build_network_overview(transactions)
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to build network overview: {exc}",
+        ) from exc
+
+
+@app.get("/network/suspicious-devices", tags=["Network"])
+def suspicious_devices(limit: int = 10):
+    dataset_path = (
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "transactions_processed.csv"
+    )
+
+    if not dataset_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Processed transaction dataset is not available.",
+        )
+
+    try:
+        transactions = pd.read_csv(dataset_path)
+
+        return {
+            "limit": limit,
+            "data": build_suspicious_devices(
+                transactions,
+                limit=limit,
+            ),
+        }
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to build suspicious devices: {exc}",
+        ) from exc
+
+
+@app.get("/network/suspicious-ips", tags=["Network"])
+def suspicious_ips(limit: int = 10):
+    dataset_path = (
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "transactions_processed.csv"
+    )
+
+    if not dataset_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Processed transaction dataset is not available.",
+        )
+
+    try:
+        transactions = pd.read_csv(dataset_path)
+
+        return {
+            "limit": limit,
+            "data": build_suspicious_ips(
+                transactions,
+                limit=limit,
+            ),
+        }
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to build suspicious IPs: {exc}",
+        ) from exc
 
 
 @app.get("/dashboard/summary", tags=["Dashboard"])
@@ -201,6 +299,42 @@ def dashboard_summary():
         "fraud_spike": summary.fraud_spike,
         "abuse_ring_detected": summary.abuse_ring_detected,
     }
+
+@app.get("/dashboard/fraud-trend", tags=["Dashboard"])
+def fraud_trend(days: int = 7):
+    dataset_path = (
+        PROJECT_ROOT
+        / "data"
+        / "processed"
+        / "transactions_processed.csv"
+    )
+
+    if not dataset_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Processed transaction dataset is not available.",
+        )
+
+    try:
+        transactions = pd.read_csv(dataset_path)
+
+        trend = build_fraud_trend(
+            transactions,
+            days=days,
+        )
+
+        return {
+            "days": days,
+            "data": trend,
+        }
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+    
 @app.get("/transactions/recent", tags=["Transactions"])
 def recent_transactions(limit: int = 8):
     dataset_path = (
@@ -431,3 +565,27 @@ def score_transaction(transaction: TransactionScoreRequest):
         "threshold": 0.050956,
         "model": "calibrated_behavior_aware_fraud_model",
     }
+
+
+@app.get("/evaluation/metrics", tags=["Evaluation"])
+def evaluation_metrics():
+    try:
+        return get_evaluation_metrics()
+
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        ) from exc
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to calculate evaluation metrics: {exc}",
+        ) from exc

@@ -52,3 +52,8 @@ export async function getSuspiciousIPs(limit = 10) {
   );
   return response.data;
 }
+
+export async function getEvaluationMetrics() {
+  const response = await api.get("/evaluation/metrics");
+  return response.data;
+}

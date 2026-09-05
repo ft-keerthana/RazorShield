@@ -11,6 +11,22 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from ml.data.split import split_train_test
 
 
+# Explicit baseline feature set.
+# Raw identifiers and synthetic scenario labels are intentionally excluded.
+FEATURE_COLUMNS = [
+    "amount",
+    "amount_log",
+    "transaction_hour",
+    "transaction_day_of_week",
+    "is_weekend",
+    "currency",
+    "status",
+    "billing_country",
+    "shipping_country",
+    "merchant_id",
+]
+
+
 def main():
     project_root = Path(__file__).resolve().parents[2]
 
@@ -34,11 +50,29 @@ def main():
             f"Target column '{target_column}' was not found."
         )
 
+    # Validate required features
+    missing_features = [
+        column for column in FEATURE_COLUMNS
+        if column not in df.columns
+    ]
+
+    if missing_features:
+        raise ValueError(
+            f"Missing required feature columns: {missing_features}"
+        )
+
+    # Keep only explicitly approved model features + target
+    model_df = df[FEATURE_COLUMNS + [target_column]].copy()
+
     # Split
     X_train, X_test, y_train, y_test = split_train_test(
-        df=df,
+        df=model_df,
         target_column=target_column,
     )
+
+    print(f"Training samples: {len(X_train)}")
+    print(f"Test samples: {len(X_test)}")
+    print(f"Features used: {FEATURE_COLUMNS}")
 
     # Identify feature types
     numeric_features = X_train.select_dtypes(
@@ -49,7 +83,7 @@ def main():
         include=["object", "category", "bool"]
     ).columns.tolist()
 
-    # Preprocessing for numeric features
+    # Numeric preprocessing
     numeric_transformer = Pipeline(
         steps=[
             ("imputer", SimpleImputer(strategy="median")),
@@ -57,14 +91,12 @@ def main():
         ]
     )
 
-    # Preprocessing for categorical features
+    # Categorical preprocessing
     categorical_transformer = Pipeline(
         steps=[
             (
                 "imputer",
-                SimpleImputer(
-                    strategy="most_frequent"
-                ),
+                SimpleImputer(strategy="most_frequent"),
             ),
             (
                 "encoder",
@@ -92,7 +124,7 @@ def main():
         remainder="drop",
     )
 
-    # Baseline pipeline
+    # Logistic regression baseline
     model = Pipeline(
         steps=[
             ("preprocessor", preprocessor),
@@ -110,7 +142,7 @@ def main():
     # Train
     model.fit(X_train, y_train)
 
-    # Save model
+    # Save
     model_path = model_dir / "baseline_fraud_model.joblib"
     joblib.dump(model, model_path)
 
