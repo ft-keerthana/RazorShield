@@ -30,6 +30,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://razorsentry.vercel.app",
+        "https://razorsentry-q5dw5724r-keerthana-3843.vercel.app",
         "http://localhost:5173",
     ],
     allow_credentials=True,
