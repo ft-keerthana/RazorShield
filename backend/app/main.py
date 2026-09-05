@@ -1,19 +1,17 @@
-from app.services.evaluation import get_evaluation_metrics
 from pathlib import Path
-from fastapi.middleware.cors import CORSMiddleware
+
 import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from app.services.evaluation import get_evaluation_metrics
 from app.policy.engine import make_decision
 from app.policy.cost_optimizer import optimize_decision
 from app.network.fraud_spike import detect_fraud_spike
 from app.services.dashboard import build_dashboard_summary
-from app.services.investigation import (
-    get_transaction_investigation,
-)
+from app.services.investigation import get_transaction_investigation
 from app.services.fraud_trend import build_fraud_trend
 from app.services.network_intelligence import (
     build_network_overview,
@@ -21,24 +19,21 @@ from app.services.network_intelligence import (
     build_suspicious_ips,
 )
 
+
 app = FastAPI(
     title="RazorShield API",
     description="AI-powered risk intelligence platform for modern payments",
     version="0.2.0",
 )
+
+
+# ---------------------------------------------------------
+# CORS
+# ---------------------------------------------------------
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://razorsentry.vercel.app",
-        "https://razorsentry-q5dw5724r-keerthana-3843.vercel.app",
-        "http://localhost:5173",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-app.add_middleware(
-    CORSMiddleware,
+    allow_origin_regex=r"https://razorsentry(-[a-z0-9]+)?-keerthana-3843\.vercel\.app",
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
@@ -49,6 +44,10 @@ app.add_middleware(
 )
 
 
+# ---------------------------------------------------------
+# Paths
+# ---------------------------------------------------------
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 MODEL_PATH = (
@@ -58,6 +57,10 @@ MODEL_PATH = (
     / "calibrated_behavior_aware_fraud_model.joblib"
 )
 
+
+# ---------------------------------------------------------
+# Model configuration
+# ---------------------------------------------------------
 
 MODEL_FEATURES = [
     "amount",
@@ -98,6 +101,10 @@ model = None
 if MODEL_PATH.exists():
     model = joblib.load(MODEL_PATH)
 
+
+# ---------------------------------------------------------
+# Request models
+# ---------------------------------------------------------
 
 class TransactionScoreRequest(BaseModel):
     transaction_id: str
@@ -145,10 +152,18 @@ class TransactionScoreRequest(BaseModel):
     rule_signal_count: int
 
 
+# ---------------------------------------------------------
+# Health
+# ---------------------------------------------------------
+
 @app.get("/health", tags=["Health"])
 def health_check():
     return {"status": "ok"}
 
+
+# ---------------------------------------------------------
+# Model status
+# ---------------------------------------------------------
 
 @app.get("/model/status", tags=["Model"])
 def model_status():
@@ -158,6 +173,10 @@ def model_status():
         "model_name": "calibrated_behavior_aware_fraud_model",
     }
 
+
+# ---------------------------------------------------------
+# Network fraud spike
+# ---------------------------------------------------------
 
 @app.get("/network/fraud-spike", tags=["Network Intelligence"])
 def fraud_spike_status():
@@ -185,6 +204,12 @@ def fraud_spike_status():
         "spike_ratio": result.spike_ratio,
         "severity": result.severity,
     }
+
+
+# ---------------------------------------------------------
+# Network overview
+# ---------------------------------------------------------
+
 @app.get("/network/overview", tags=["Network"])
 def network_overview():
     dataset_path = (
@@ -211,6 +236,10 @@ def network_overview():
             detail=f"Failed to build network overview: {exc}",
         ) from exc
 
+
+# ---------------------------------------------------------
+# Suspicious devices
+# ---------------------------------------------------------
 
 @app.get("/network/suspicious-devices", tags=["Network"])
 def suspicious_devices(limit: int = 10):
@@ -245,6 +274,10 @@ def suspicious_devices(limit: int = 10):
         ) from exc
 
 
+# ---------------------------------------------------------
+# Suspicious IPs
+# ---------------------------------------------------------
+
 @app.get("/network/suspicious-ips", tags=["Network"])
 def suspicious_ips(limit: int = 10):
     dataset_path = (
@@ -278,6 +311,10 @@ def suspicious_ips(limit: int = 10):
         ) from exc
 
 
+# ---------------------------------------------------------
+# Dashboard summary
+# ---------------------------------------------------------
+
 @app.get("/dashboard/summary", tags=["Dashboard"])
 def dashboard_summary():
     dataset_path = (
@@ -310,6 +347,11 @@ def dashboard_summary():
         "fraud_spike": summary.fraud_spike,
         "abuse_ring_detected": summary.abuse_ring_detected,
     }
+
+
+# ---------------------------------------------------------
+# Fraud trend
+# ---------------------------------------------------------
 
 @app.get("/dashboard/fraud-trend", tags=["Dashboard"])
 def fraud_trend(days: int = 7):
@@ -345,7 +387,11 @@ def fraud_trend(days: int = 7):
             detail=str(exc),
         ) from exc
 
-    
+
+# ---------------------------------------------------------
+# Recent transactions
+# ---------------------------------------------------------
+
 @app.get("/transactions/recent", tags=["Transactions"])
 def recent_transactions(limit: int = 8):
     dataset_path = (
@@ -388,6 +434,12 @@ def recent_transactions(limit: int = 8):
         }
         for _, row in recent.iterrows()
     ]
+
+
+# ---------------------------------------------------------
+# Score transaction by ID
+# ---------------------------------------------------------
+
 @app.post(
     "/transactions/{transaction_id}/score",
     tags=["Transactions"],
@@ -465,6 +517,12 @@ def score_transaction_by_id(transaction_id: str):
         "threshold": 0.050956,
         "model": "calibrated_behavior_aware_fraud_model",
     }
+
+
+# ---------------------------------------------------------
+# Transaction investigation
+# ---------------------------------------------------------
+
 @app.get(
     "/transactions/{transaction_id}",
     tags=["Transactions"],
@@ -490,6 +548,7 @@ def transaction_investigation(transaction_id: str):
             transactions,
             transaction_id,
         )
+
     except KeyError as exc:
         raise HTTPException(
             status_code=404,
@@ -518,7 +577,15 @@ def transaction_investigation(transaction_id: str):
         "failed_attempts_1h": investigation.failed_attempts_1h,
     }
 
-@app.post("/transactions/score", tags=["Transactions"])
+
+# ---------------------------------------------------------
+# Direct transaction scoring
+# ---------------------------------------------------------
+
+@app.post(
+    "/transactions/score",
+    tags=["Transactions"],
+)
 def score_transaction(transaction: TransactionScoreRequest):
     if model is None:
         return {
@@ -538,12 +605,10 @@ def score_transaction(transaction: TransactionScoreRequest):
         ]
     )
 
-
     fraud_probability = float(
         model.predict_proba(features)[0][1]
     )
 
-    # Existing ML + rule-based policy decision
     decision = make_decision(
         fraud_probability=fraud_probability,
         rule_risk_score=transaction.rule_risk_score,
@@ -551,7 +616,6 @@ def score_transaction(transaction: TransactionScoreRequest):
         rule_signal_count=transaction.rule_signal_count,
     )
 
-    # Business-aware cost optimization
     business_decision = optimize_decision(
         fraud_probability=fraud_probability,
         transaction_amount=transaction.amount,
@@ -561,12 +625,10 @@ def score_transaction(transaction: TransactionScoreRequest):
         "transaction_id": transaction_id,
         "fraud_probability": round(fraud_probability, 6),
 
-        # Existing risk policy
         "risk_score": decision.risk_score,
         "decision": decision.decision,
         "reasons": decision.reasons,
 
-        # Business-aware recommendation
         "business_decision": business_decision.decision,
         "expected_cost": business_decision.expected_cost,
         "allow_cost": business_decision.allow_cost,
@@ -578,7 +640,14 @@ def score_transaction(transaction: TransactionScoreRequest):
     }
 
 
-@app.get("/evaluation/metrics", tags=["Evaluation"])
+# ---------------------------------------------------------
+# Evaluation metrics
+# ---------------------------------------------------------
+
+@app.get(
+    "/evaluation/metrics",
+    tags=["Evaluation"],
+)
 def evaluation_metrics():
     try:
         return get_evaluation_metrics()
